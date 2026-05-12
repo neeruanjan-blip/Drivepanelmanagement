@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Drive & Panel Management</title>
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <script>
+    // !! SET YOUR SUPABASE CREDENTIALS HERE !!
+    const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co";
+    const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
+  </script>
+
+  <style>
+    [x-cloak] { display: none !important; }
+    .sidebar-link.active { background: #1e40af; color: white; }
+    .status-badge { @apply px-2 py-0.5 rounded-full text-xs font-medium; }
+    .fade-in { animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    .modal-backdrop { backdrop-filter: blur(2px); }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+<!-- ==================== APP ROOT ==================== -->
+<div id="app">
+
+  <!-- LOGIN PAGE -->
+  <div id="page-login" class="hidden min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-950 to-slate-800">
+    <div class="bg-white rounded-2xl shadow-2xl p-10 w-full max-w-md fade-in">
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-14 h-14 bg-blue-100 rounded-2xl mb-4">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1e40af" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <h1 class="text-2xl font-bold text-slate-900">Drive & Panel Management</h1>
+        <p class="text-slate-500 mt-1 text-sm">Sign in to your account</p>
+      </div>
+      <div id="login-error" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-4 text-sm"></div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
+          <input id="login-email" type="email" placeholder="admin@company.com"
+            class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+          <input id="login-password" type="password" placeholder="••••••••"
+            class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+        </div>
+        <button onclick="handleLogin()" id="login-btn"
+          class="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-lg transition text-sm">
+          Sign In
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP (shown after login) -->
+  <div id="page-app" class="hidden flex h-screen overflow-hidden">
+
+    <!-- SIDEBAR -->
+    <aside class="w-60 bg-slate-900 text-white flex flex-col shrink-0">
+      <div class="px-5 py-5 border-b border-slate-700">
+        <h1 class="font-bold text-base leading-tight">Drive & Panel<br>Management</h1>
+        <p id="user-domain" class="text-xs text-slate-400 mt-1"></p>
+      </div>
+
+      <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <button onclick="navigate('dashboard')" class="sidebar-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white text-sm transition" data-page="dashboard">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </button>
+        <button onclick="navigate('domains')" class="sidebar-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white text-sm transition" data-page="domains" id="nav-domains">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          Domains
+        </button>
+        <button onclick="navigate('panels')" class="sidebar-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white text-sm transition" data-page="panels">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Panel Members
+        </button>
+        <button onclick="navigate('drives')" class="sidebar-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white text-sm transition" data-page="drives">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
+          Drive Sheets
+        </button>
+        <button onclick="navigate('candidates')" class="sidebar-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white text-sm transition" data-page="candidates">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Candidates
+        </button>
+        <button onclick="navigate('reports')" class="sidebar-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white text-sm transition" data-page="reports">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Reports
+        </button>
+      </nav>
+
+      <!-- User info -->
+      <div class="px-4 py-4 border-t border-slate-700">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-sm font-bold" id="user-avatar">?</div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium truncate" id="user-name">Loading…</p>
+            <p class="text-xs text-slate-400 truncate capitalize" id="user-role"></p>
+          </div>
+          <button onclick="handleLogout()" title="Sign out" class="text-slate-400 hover:text-white">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 overflow-y-auto bg-slate-50">
+
+      <!-- TOP BAR -->
+      <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+        <div>
+          <h2 id="page-title" class="text-lg font-semibold text-slate-900">Dashboard</h2>
+          <p id="page-subtitle" class="text-xs text-slate-400 mt-0.5"></p>
+        </div>
+        <div class="flex items-center gap-3">
+          <!-- Domain Filter -->
+          <select id="global-domain-filter" onchange="onDomainChange()" class="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">All Domains</option>
+          </select>
+          <!-- Notifications -->
+          <div class="relative">
+            <button onclick="toggleNotifications()" class="relative p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              <span id="notif-badge" class="hidden absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">0</span>
+            </button>
+            <div id="notif-panel" class="hidden absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+              <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                <span class="font-medium text-sm">Notifications</span>
+                <button onclick="markAllRead()" class="text-xs text-blue-600 hover:underline">Mark all read</button>
+              </div>
+              <div id="notif-list" class="max-h-72 overflow-y-auto divide-y divide-slate-100"></div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- PAGE CONTENT -->
+      <div class="p-6" id="page-content">
+        <!-- Rendered dynamically -->
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ==================== MODAL ==================== -->
+<div id="modal" class="hidden fixed inset-0 bg-black/40 modal-backdrop z-50 flex items-center justify-center p-4">
+  <div id="modal-box" class="bg-white rounded-2xl shadow-2xl w-full max-w-lg fade-in max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+      <h3 id="modal-title" class="font-semibold text-slate-900"></h3>
+      <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="modal-body" class="px-6 py-4"></div>
+    <div id="modal-footer" class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="hidden fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl text-sm fade-in flex items-center gap-2 max-w-xs"></div>
+
+<!-- ==================== APP SCRIPT ==================== -->
+<script>
+// ============ SUPABASE INIT ============
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentUser = null;
+let currentProfile = null;
+let currentDomainId = "";
+let domains = [];
+
+const CANDIDATE_STATUSES = [
+  "Scheduled","Confirmed","No Show","L1 Cleared","L1 Rejected",
+  "L2 Cleared","L2 Rejected","Managerial Cleared","HR Round",
+  "Selected","Rejected","Offer Released"
+];
+
+const STATUS_COLORS = {
+  "Scheduled": "bg-blue-100 text-blue-800",
+  "Confirmed": "bg-green-100 text-green-800",
+  "No Show": "bg-gray-100 text-gray-800",
+  "L1 Cleared": "bg-teal-100 text-teal-800",
+  "L1 Rejected": "bg-red-100 text-red-800",
+  "L2 Cleared": "bg-teal-100 text-teal-800",
+  "L2 Rejected": "bg-red-100 text-red-800",
+  "Managerial Cleared": "bg-indigo-100 text-indigo-800",
+  "HR Round": "bg-violet-100 text-violet-800",
+  "Selected": "bg-emerald-100 text-emerald-800",
+  "Rejected": "bg-red-100 text-red-800",
+  "Offer Released": "bg-amber-100 text-amber-800",
+};
+
+const AVAIL_COLORS = {
+  "Available": "bg-green-100 text-green-800",
+  "Unavailable": "bg-red-100 text-red-800",
+  "On Leave": "bg-amber-100 text-amber-800",
+};
+
+// ============ INIT ============
+window.addEventListener("DOMContentLoaded", () => {
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (session?.user) {
+      currentUser = session.user;
+      const { data: profile } = await sb.from("profiles").select("*").eq("id", session.user.id).single();
+      currentProfile = profile;
+      await loadDomains();
+      showApp();
+      navigate("dashboard");
+    } else {
+      currentUser = null;
+      currentProfile = null;
+      showLogin();
+    }
+  });
+});
+
+function showLogin() {
+  document.getElementById("page-login").classList.remove("hidden");
+  document.getElementById("page-app").classList.add("hidden");
+}
+
+function showApp() {
+  document.getElementById("page-login").classList.add("hidden");
+  document.getElementById("page-app").classList.remove("hidden");
+  const name = currentProfile?.full_name || currentUser?.email?.split("@")[0] || "User";
+  document.getElementById("user-name").textContent = name;
+  document.getElementById("user-role").textContent = currentProfile?.role || "user";
+  document.getElementById("user-avatar").textContent = name[0].toUpperCase();
+  if (currentProfile?.role !== "admin") {
+    document.getElementById("nav-domains").classList.add("hidden");
+  }
+}
+
+async function handleLogin() {
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
+  const btn = document.getElementById("login-btn");
+  const err = document.getElementById("login-error");
+  err.classList.add("hidden");
+  btn.textContent = "Signing in…";
+  btn.disabled = true;
+  try {
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.remove("hidden");
+  } finally {
+    btn.textContent = "Sign In";
+    btn.disabled = false;
+  }
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+}
+
+// ============ NAVIGATION ============
+async function navigate(page) {
+  document.querySelectorAll(".sidebar-link").forEach(l => l.classList.remove("active", "text-white", "bg-blue-700"));
+  const activeLink = document.querySelector(`[data-page="${page}"]`);
+  if (activeLink) activeLink.classList.add("active");
+
+  const titles = {
+    dashboard: ["Dashboard", "Real-time overview"],
+    domains: ["Domain Management", "Manage hiring domains"],
+    panels: ["Panel Members", "Manage interview panel"],
+    drives: ["Drive Sheets", "Manage interview drives"],
+    candidates: ["Candidates", "Track candidate pipeline"],
+    reports: ["Reports & Analytics", "Export and analyze data"],
+  };
+  document.getElementById("page-title").textContent = titles[page]?.[0] || page;
+  document.getElementById("page-subtitle").textContent = titles[page]?.[1] || "";
+
+  const content = document.getElementById("page-content");
+  content.innerHTML = `<div class="flex items-center justify-center py-20 text-slate-400 text-sm">Loading…</div>`;
+
+  if (page === "dashboard") await renderDashboard();
+  else if (page === "domains") await renderDomains();
+  else if (page === "panels") await renderPanels();
+  else if (page === "drives") await renderDrives();
+  else if (page === "candidates") await renderCandidates();
+  else if (page === "reports") await renderReports();
+}
+
+async function loadDomains() {
+  const { data } = await sb.from("domains").select("*").order("name");
+  domains = data || [];
+  const sel = document.getElementById("global-domain-filter");
+  sel.innerHTML = `<option value="">All Domains</option>` +
+    domains.map(d => `<option value="${d.id}">${d.name}</option>`).join("");
+}
+
+function onDomainChange() {
+  currentDomainId = document.getElementById("global-domain-filter").value;
+  const page = document.querySelector(".sidebar-link.active")?.dataset?.page || "dashboard";
+  navigate(page);
+}
+
+// ============ DASHBOARD ============
+async function renderDashboard() {
+  let q = sb.from("candidates").select("status, interview_level, domain_id");
+  if (currentDomainId) q = q.eq("domain_id", currentDomainId);
+  const { data: candidates = [] } = await q;
+
+  let pq = sb.from("panel_members").select("availability, domain_id");
+  if (currentDomainId) pq = pq.eq("domain_id", currentDomainId);
+  const { data: panels = [] } = await pq;
+
+  const sc = candidates.reduce((a, c) => { a[c.status] = (a[c.status]||0)+1; return a; }, {});
+  const total = candidates.length;
+  const selected = sc["Selected"]||0;
+  const offerReleased = sc["Offer Released"]||0;
+  const noShow = sc["No Show"]||0;
+  const confirmed = sc["Confirmed"]||0;
+  const availPanels = panels.filter(p => p.availability === "Available").length;
+
+  const statCard = (label, value, sub, color) => `
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+      <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">${label}</p>
+      <p class="text-3xl font-bold mt-1 ${color}">${value}</p>
+      <p class="text-xs text-slate-400 mt-1">${sub}</p>
+    </div>`;
+
+  const statusBar = Object.entries(sc).map(([k,v]) =>
+    `<div class="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+      <span class="px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[k]||'bg-gray-100 text-gray-700'}">${k}</span>
+      <div class="flex items-center gap-3">
+        <div class="bg-slate-100 rounded-full h-1.5 w-32 overflow-hidden">
+          <div class="bg-blue-500 h-full rounded-full" style="width:${total ? Math.round(v/total*100) : 0}%"></div>
+        </div>
+        <span class="text-sm font-semibold text-slate-700 w-6 text-right">${v}</span>
+      </div>
+    </div>`
+  ).join("");
+
+  document.getElementById("page-content").innerHTML = `
+    <div class="space-y-6">
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        ${statCard("Total Candidates", total, "across all drives", "text-slate-900")}
+        ${statCard("Confirmed", confirmed, "confirmed attendance", "text-green-600")}
+        ${statCard("Selected", selected, "passed all rounds", "text-emerald-600")}
+        ${statCard("Offer Released", offerReleased, "offers extended", "text-amber-600")}
+        ${statCard("No Show", noShow, "did not attend", "text-red-500")}
+        ${statCard("Available Panels", availPanels+"/"+panels.length, "panels available now", "text-blue-600")}
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-xl border border-slate-200 p-5">
+          <h3 class="font-semibold text-slate-900 mb-4">Candidate Pipeline</h3>
+          ${total ? statusBar : '<p class="text-sm text-slate-400 text-center py-8">No candidates yet.</p>'}
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-5">
+          <h3 class="font-semibold text-slate-900 mb-4">Panel Availability</h3>
+          ${panels.length ? panels.slice(0,8).map(p => `
+            <div class="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+              <span class="text-sm text-slate-700">${p.name || "Panel member"}</span>
+              <span class="px-2 py-0.5 rounded-full text-xs font-medium ${AVAIL_COLORS[p.availability]||'bg-gray-100'}">${p.availability}</span>
+            </div>`).join("") : '<p class="text-sm text-slate-400 text-center py-8">No panel members yet.</p>'}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ============ DOMAINS ============
+async function renderDomains() {
+  const { data: rows = [] } = await sb.from("domains").select("*").order("name");
+  const isAdmin = currentProfile?.role === "admin";
+
+  document.getElementById("page-content").innerHTML = `
+    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <p class="text-sm text-slate-500">${rows.length} domain(s)</p>
+        ${isAdmin ? `<button onclick="openDomainModal()" class="bg-blue-700 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-800 transition font-medium">+ Add Domain</button>` : ""}
+      </div>
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-slate-500 uppercase text-xs">
+          <tr>
+            <th class="text-left px-5 py-3">Name</th>
+            <th class="text-left px-5 py-3">Description</th>
+            <th class="text-left px-5 py-3">Status</th>
+            ${isAdmin ? `<th class="text-left px-5 py-3">Actions</th>` : ""}
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          ${rows.length ? rows.map(d => `
+            <tr class="hover:bg-slate-50">
+              <td class="px-5 py-3 font-medium">${d.name}</td>
+              <td class="px-5 py-3 text-slate-500">${d.description || "—"}</td>
+              <td class="px-5 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium ${d.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}">${d.is_active ? "Active" : "Inactive"}</span></td>
+              ${isAdmin ? `<td class="px-5 py-3 flex gap-2">
+                <button onclick="openDomainModal('${d.id}')" class="text-xs text-blue-600 hover:underline">Edit</button>
+                <button onclick="deleteDomain('${d.id}')" class="text-xs text-red-500 hover:underline">Delete</button>
+              </td>` : ""}
+            </tr>`).join("") :
+          `<tr><td colspan="4" class="text-center py-12 text-slate-400">No domains found. Add your first domain.</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+async function openDomainModal(id) {
+  let domain = null;
+  if (id) {
+    const { data } = await sb.from("domains").select("*").eq("id", id).single();
+    domain = data;
+  }
+  openModal(id ? "Edit Domain" : "Add Domain", `
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Domain Name <span class="text-red-500">*</span></label>
+        <input id="f-name" value="${domain?.name||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Description</label>
+        <textarea id="f-desc" rows="2" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">${domain?.description||""}</textarea>
+      </div>
+    </div>`,
+    `<button onclick="closeModal()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+     <button onclick="saveDomain('${id||""}')" class="px-4 py-2 text-sm bg-blue-700 text-white rounded-lg hover:bg-blue-800 font-medium">Save</button>`
+  );
+}
+
+async function saveDomain(id) {
+  const name = document.getElementById("f-name").value.trim();
+  const description = document.getElementById("f-desc").value.trim();
+  if (!name) return showToast("Domain name is required", "error");
+  try {
+    if (id) await sb.from("domains").update({ name, description }).eq("id", id);
+    else await sb.from("domains").insert({ name, description });
+    closeModal(); await loadDomains(); await renderDomains(); showToast("Domain saved!");
+  } catch (e) { showToast(e.message, "error"); }
+}
+
+async function deleteDomain(id) {
+  if (!confirm("Delete this domain? All related data will be affected.")) return;
+  await sb.from("domains").delete().eq("id", id);
+  await loadDomains(); await renderDomains(); showToast("Domain deleted");
+}
+
+// ============ PANELS ============
+async function renderPanels() {
+  let q = sb.from("panel_members").select("*, domains(name)").order("name");
+  if (currentDomainId) q = q.eq("domain_id", currentDomainId);
+  const { data: rows = [] } = await q;
+
+  document.getElementById("page-content").innerHTML = `
+    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <p class="text-sm text-slate-500">${rows.length} panel member(s)</p>
+        <button onclick="openPanelModal()" class="bg-blue-700 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-800 transition font-medium">+ Add Panel Member</button>
+      </div>
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-slate-500 uppercase text-xs">
+          <tr>
+            <th class="text-left px-5 py-3">Name</th>
+            <th class="text-left px-5 py-3">Domain</th>
+            <th class="text-left px-5 py-3">Level</th>
+            <th class="text-left px-5 py-3">Email</th>
+            <th class="text-left px-5 py-3">Availability</th>
+            <th class="text-left px-5 py-3">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          ${rows.length ? rows.map(p => `
+            <tr class="hover:bg-slate-50">
+              <td class="px-5 py-3 font-medium">${p.name}</td>
+              <td class="px-5 py-3 text-slate-500">${p.domains?.name || "—"}</td>
+              <td class="px-5 py-3">${p.interview_level || "—"}</td>
+              <td class="px-5 py-3 text-slate-500">${p.email}</td>
+              <td class="px-5 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium ${AVAIL_COLORS[p.availability]||'bg-gray-100'}">${p.availability}</span></td>
+              <td class="px-5 py-3 flex gap-2">
+                <button onclick="openPanelModal('${p.id}')" class="text-xs text-blue-600 hover:underline">Edit</button>
+                <button onclick="deletePanel('${p.id}')" class="text-xs text-red-500 hover:underline">Remove</button>
+              </td>
+            </tr>`).join("") :
+          `<tr><td colspan="6" class="text-center py-12 text-slate-400">No panel members. Add your first.</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+async function openPanelModal(id) {
+  let panel = null;
+  if (id) { const { data } = await sb.from("panel_members").select("*").eq("id", id).single(); panel = data; }
+  const domainOptions = domains.map(d => `<option value="${d.id}" ${panel?.domain_id===d.id?"selected":""}>${d.name}</option>`).join("");
+  openModal(id ? "Edit Panel Member" : "Add Panel Member", `
+    <div class="grid grid-cols-2 gap-4">
+      <div class="col-span-2">
+        <label class="block text-sm font-medium text-slate-700 mb-1">Full Name *</label>
+        <input id="f-name" value="${panel?.name||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Email *</label>
+        <input id="f-email" type="email" value="${panel?.email||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Domain *</label>
+        <select id="f-domain" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">Select domain</option>${domainOptions}
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Designation</label>
+        <input id="f-designation" value="${panel?.designation||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Interview Level</label>
+        <select id="f-level" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          ${["L1","L2","Managerial","HR"].map(l=>`<option ${panel?.interview_level===l?"selected":""}>${l}</option>`).join("")}
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Hiring Role</label>
+        <input id="f-role" value="${panel?.hiring_role||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Location</label>
+        <input id="f-location" value="${panel?.location||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Availability</label>
+        <select id="f-avail" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          ${["Available","Unavailable","On Leave"].map(a=>`<option ${panel?.availability===a?"selected":""}>${a}</option>`).join("")}
+        </select>
+      </div>
+    </div>`,
+    `<button onclick="closeModal()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+     <button onclick="savePanel('${id||""}')" class="px-4 py-2 text-sm bg-blue-700 text-white rounded-lg hover:bg-blue-800 font-medium">Save</button>`
+  );
+}
+
+async function savePanel(id) {
+  const payload = {
+    name: document.getElementById("f-name").value.trim(),
+    email: document.getElementById("f-email").value.trim(),
+    domain_id: document.getElementById("f-domain").value,
+    designation: document.getElementById("f-designation").value.trim(),
+    interview_level: document.getElementById("f-level").value,
+    hiring_role: document.getElementById("f-role").value.trim(),
+    location: document.getElementById("f-location").value.trim(),
+    availability: document.getElementById("f-avail").value,
+  };
+  if (!payload.name || !payload.email || !payload.domain_id) return showToast("Name, email and domain are required", "error");
+  try {
+    if (id) await sb.from("panel_members").update(payload).eq("id", id);
+    else await sb.from("panel_members").insert({ ...payload, created_by: currentUser.id });
+    closeModal(); await renderPanels(); showToast("Panel member saved!");
+  } catch(e) { showToast(e.message, "error"); }
+}
+
+async function deletePanel(id) {
+  if (!confirm("Remove this panel member?")) return;
+  await sb.from("panel_members").update({ is_active: false }).eq("id", id);
+  await renderPanels(); showToast("Panel member removed");
+}
+
+// ============ DRIVE SHEETS ============
+async function renderDrives() {
+  let q = sb.from("drive_sheets").select("*, domains(name)").order("created_at", { ascending: false });
+  if (currentDomainId) q = q.eq("domain_id", currentDomainId);
+  const { data: rows = [] } = await q;
+
+  document.getElementById("page-content").innerHTML = `
+    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <p class="text-sm text-slate-500">${rows.length} drive sheet(s)</p>
+        <button onclick="openDriveModal()" class="bg-blue-700 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-800 transition font-medium">+ New Drive</button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-5">
+        ${rows.length ? rows.map(d => `
+          <div class="border border-slate-200 rounded-xl p-4 hover:border-blue-300 hover:shadow-sm transition cursor-pointer" onclick="navigate('candidates');sessionStorage.setItem('driveId','${d.id}')">
+            <div class="flex items-start justify-between mb-2">
+              <h4 class="font-semibold text-slate-900">${d.drive_name}</h4>
+              <span class="text-xs px-2 py-0.5 rounded-full ${d.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}">${d.is_active ? 'Active' : 'Closed'}</span>
+            </div>
+            <p class="text-xs text-slate-500 mb-3">${d.domains?.name || "No domain"} • ${d.drive_date ? new Date(d.drive_date).toLocaleDateString("en-IN") : "No date"}</p>
+            <p class="text-xs text-slate-400 line-clamp-2">${d.description || "No description"}</p>
+            <div class="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+              <button onclick="event.stopPropagation();openDriveModal('${d.id}')" class="text-xs text-blue-600 hover:underline">Edit</button>
+              <button onclick="event.stopPropagation();deleteDrive('${d.id}')" class="text-xs text-red-500 hover:underline">Delete</button>
+            </div>
+          </div>`).join("") :
+        `<div class="col-span-3 text-center py-12 text-slate-400">No drives yet. Create your first drive sheet.</div>`}
+      </div>
+    </div>`;
+}
+
+async function openDriveModal(id) {
+  let drive = null;
+  if (id) { const { data } = await sb.from("drive_sheets").select("*").eq("id", id).single(); drive = data; }
+  const domainOptions = domains.map(d => `<option value="${d.id}" ${drive?.domain_id===d.id?"selected":""}>${d.name}</option>`).join("");
+  openModal(id ? "Edit Drive" : "New Drive Sheet", `
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Drive Name *</label>
+        <input id="f-name" value="${drive?.drive_name||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Domain *</label>
+          <select id="f-domain" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Select</option>${domainOptions}
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Drive Date</label>
+          <input id="f-date" type="date" value="${drive?.drive_date||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Description</label>
+        <textarea id="f-desc" rows="2" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">${drive?.description||""}</textarea>
+      </div>
+    </div>`,
+    `<button onclick="closeModal()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+     <button onclick="saveDrive('${id||""}')" class="px-4 py-2 text-sm bg-blue-700 text-white rounded-lg hover:bg-blue-800 font-medium">Save</button>`
+  );
+}
+
+async function saveDrive(id) {
+  const payload = {
+    drive_name: document.getElementById("f-name").value.trim(),
+    domain_id: document.getElementById("f-domain").value,
+    drive_date: document.getElementById("f-date").value || null,
+    description: document.getElementById("f-desc").value.trim(),
+  };
+  if (!payload.drive_name || !payload.domain_id) return showToast("Drive name and domain are required", "error");
+  try {
+    if (id) await sb.from("drive_sheets").update(payload).eq("id", id);
+    else await sb.from("drive_sheets").insert({ ...payload, created_by: currentUser.id });
+    closeModal(); await renderDrives(); showToast("Drive sheet saved!");
+  } catch(e) { showToast(e.message, "error"); }
+}
+
+async function deleteDrive(id) {
+  if (!confirm("Delete this drive sheet?")) return;
+  await sb.from("drive_sheets").delete().eq("id", id);
+  await renderDrives(); showToast("Drive deleted");
+}
+
+// ============ CANDIDATES ============
+async function renderCandidates() {
+  const driveId = sessionStorage.getItem("driveId") || "";
+  let drives = [];
+  { const { data } = await sb.from("drive_sheets").select("id, drive_name, domain_id").order("drive_name"); drives = data || []; }
+  if (currentDomainId) drives = drives.filter(d => d.domain_id === currentDomainId);
+
+  let q = sb.from("candidates").select(`
+    id, name, email, contact, experience_years, current_company, notice_period,
+    recruiter_name, interview_level, status, interview_link, interview_date,
+    drive_sheet_id, domain_id, created_at,
+    panel_members(name), drive_sheets(drive_name)
+  `).order("created_at", { ascending: false });
+  if (driveId) q = q.eq("drive_sheet_id", driveId);
+  if (currentDomainId) q = q.eq("domain_id", currentDomainId);
+  const { data: rows = [] } = await q;
+
+  const driveOptions = drives.map(d => `<option value="${d.id}" ${d.id===driveId?"selected":""}>${d.drive_name}</option>`).join("");
+
+  document.getElementById("page-content").innerHTML = `
+    <div class="space-y-4">
+      <div class="flex items-center gap-3 flex-wrap">
+        <select id="drive-filter" onchange="sessionStorage.setItem('driveId',this.value);renderCandidates()" class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">All Drives</option>${driveOptions}
+        </select>
+        <button onclick="openCandidateModal()" class="ml-auto bg-blue-700 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-800 font-medium">+ Add Candidate</button>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+        <table class="w-full text-sm min-w-[900px]">
+          <thead class="bg-slate-50 text-slate-500 uppercase text-xs">
+            <tr>
+              <th class="text-left px-4 py-3">Name</th>
+              <th class="text-left px-4 py-3">Experience</th>
+              <th class="text-left px-4 py-3">Company</th>
+              <th class="text-left px-4 py-3">Level</th>
+              <th class="text-left px-4 py-3">Panel</th>
+              <th class="text-left px-4 py-3">Status</th>
+              <th class="text-left px-4 py-3">Drive</th>
+              <th class="text-left px-4 py-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            ${rows.length ? rows.map(c => `
+              <tr class="hover:bg-slate-50">
+                <td class="px-4 py-3">
+                  <p class="font-medium">${c.name}</p>
+                  <p class="text-xs text-slate-400">${c.email}</p>
+                </td>
+                <td class="px-4 py-3">${c.experience_years ? c.experience_years+"y" : "—"}</td>
+                <td class="px-4 py-3 text-slate-500">${c.current_company || "—"}</td>
+                <td class="px-4 py-3">${c.interview_level || "—"}</td>
+                <td class="px-4 py-3 text-slate-500">${c.panel_members?.name || "—"}</td>
+                <td class="px-4 py-3">
+                  <select onchange="updateCandidateStatus('${c.id}',this.value)" class="text-xs rounded-full px-2 py-0.5 border-0 font-medium cursor-pointer ${STATUS_COLORS[c.status]||'bg-gray-100'}">
+                    ${CANDIDATE_STATUSES.map(s=>`<option ${s===c.status?"selected":""}>${s}</option>`).join("")}
+                  </select>
+                </td>
+                <td class="px-4 py-3 text-slate-500 text-xs">${c.drive_sheets?.drive_name || "—"}</td>
+                <td class="px-4 py-3 flex gap-2">
+                  <button onclick="openCandidateModal('${c.id}')" class="text-xs text-blue-600 hover:underline">Edit</button>
+                  <button onclick="sendConfirmEmail('${c.id}')" class="text-xs text-green-600 hover:underline" title="Send confirmation email">Email</button>
+                  <button onclick="deleteCandidate('${c.id}')" class="text-xs text-red-500 hover:underline">Del</button>
+                </td>
+              </tr>`).join("") :
+            `<tr><td colspan="8" class="text-center py-12 text-slate-400">No candidates. Add your first.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+async function openCandidateModal(id) {
+  let cand = null;
+  if (id) { const { data } = await sb.from("candidates").select("*").eq("id", id).single(); cand = data; }
+  const drives = (await sb.from("drive_sheets").select("id, drive_name").order("drive_name")).data || [];
+  let panelMembers = (await sb.from("panel_members").select("id, name, interview_level").eq("is_active", true).order("name")).data || [];
+
+  const driveOpts = drives.map(d=>`<option value="${d.id}" ${cand?.drive_sheet_id===d.id?"selected":""}>${d.drive_name}</option>`).join("");
+  const panelOpts = panelMembers.map(p=>`<option value="${p.id}" ${cand?.panel_member_id===p.id?"selected":""}>${p.name} (${p.interview_level||""})</option>`).join("");
+  const domainOpts = domains.map(d=>`<option value="${d.id}" ${cand?.domain_id===d.id?"selected":""}>${d.name}</option>`).join("");
+
+  openModal(id ? "Edit Candidate" : "Add Candidate", `
+    <div class="grid grid-cols-2 gap-3">
+      <div class="col-span-2">
+        <label class="block text-xs font-medium text-slate-700 mb-1">Full Name *</label>
+        <input id="f-name" value="${cand?.name||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-700 mb-1">Email *</label>
+        <input id="f-email" type="email" value="${cand?.email||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-700 mb-1">Contact</label>
+        <input id="f-contact" value="${cand?.contact||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-700 mb-1">Experience (years)</label>
+        <input id="f-exp" type="number" step="0.5" value="${cand?.experience_years||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-700 mb-1">Current Company</label>
+        <input id="f-company" value="${cand?.current_company||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-700 mb-1">Notice Period</label>
+        <input id="f-notice" value="${cand?.notice_period||""}" placeholder="e.g. 30 days" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-700 mb-1">Recruiter Name</label>
+        <input id="f-recruiter" value="${cand?.recruiter_name||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-700 mb-1">Domain *</label>
+        <select id="f-domain" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">Select</option>${domainOpts}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-700 mb-1">Drive Sheet *</label>
+        <select id="f-drive" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">Select</option>${driveOpts}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-700 mb-1">Interview Level</label>
+        <select id="f-level" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          ${["L1","L2","Managerial","HR"].map(l=>`<option ${cand?.interview_level===l?"selected":""}>${l}</option>`).join("")}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-700 mb-1">Panel Member</label>
+        <select id="f-panel" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">Select panel</option>${panelOpts}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-700 mb-1">Status</label>
+        <select id="f-status" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          ${CANDIDATE_STATUSES.map(s=>`<option ${cand?.status===s?"selected":""}>${s}</option>`).join("")}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-700 mb-1">Interview Date & Time</label>
+        <input id="f-idate" type="datetime-local" value="${cand?.interview_date ? cand.interview_date.slice(0,16) : ""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <div class="col-span-2">
+        <label class="block text-xs font-medium text-slate-700 mb-1">Interview Link</label>
+        <input id="f-link" value="${cand?.interview_link||""}" placeholder="https://meet.google.com/..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+    </div>`,
+    `<button onclick="closeModal()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+     <button onclick="saveCandidate('${id||""}')" class="px-4 py-2 text-sm bg-blue-700 text-white rounded-lg hover:bg-blue-800 font-medium">Save</button>`
+  );
+}
+
+async function saveCandidate(id) {
+  const payload = {
+    name: document.getElementById("f-name").value.trim(),
+    email: document.getElementById("f-email").value.trim(),
+    contact: document.getElementById("f-contact").value.trim(),
+    experience_years: parseFloat(document.getElementById("f-exp").value) || null,
+    current_company: document.getElementById("f-company").value.trim(),
+    notice_period: document.getElementById("f-notice").value.trim(),
+    recruiter_name: document.getElementById("f-recruiter").value.trim(),
+    domain_id: document.getElementById("f-domain").value,
+    drive_sheet_id: document.getElementById("f-drive").value,
+    interview_level: document.getElementById("f-level").value,
+    panel_member_id: document.getElementById("f-panel").value || null,
+    status: document.getElementById("f-status").value,
+    interview_date: document.getElementById("f-idate").value || null,
+    interview_link: document.getElementById("f-link").value.trim(),
+  };
+  if (!payload.name || !payload.email || !payload.domain_id || !payload.drive_sheet_id)
+    return showToast("Name, email, domain and drive are required", "error");
+  try {
+    if (id) await sb.from("candidates").update(payload).eq("id", id);
+    else await sb.from("candidates").insert({ ...payload, created_by: currentUser.id });
+    closeModal(); await renderCandidates(); showToast("Candidate saved!");
+  } catch(e) { showToast(e.message, "error"); }
+}
+
+async function updateCandidateStatus(id, status) {
+  await sb.from("candidates").update({ status }).eq("id", id);
+  showToast(`Status → ${status}`);
+}
+
+async function sendConfirmEmail(id) {
+  try {
+    await sb.functions.invoke("send-email", { body: { type: "candidate_confirmation", payload: { candidateId: id } } });
+    showToast("Confirmation email sent!");
+  } catch(e) { showToast("Email failed: " + e.message, "error"); }
+}
+
+async function deleteCandidate(id) {
+  if (!confirm("Delete this candidate?")) return;
+  await sb.from("candidates").delete().eq("id", id);
+  await renderCandidates(); showToast("Candidate deleted");
+}
+
+// ============ REPORTS ============
+async function renderReports() {
+  let q = sb.from("candidates").select("status, interview_level, domain_id, current_company, recruiter_name, created_at");
+  if (currentDomainId) q = q.eq("domain_id", currentDomainId);
+  const { data: candidates = [] } = await q;
+
+  const sc = candidates.reduce((a,c)=>{ a[c.status]=(a[c.status]||0)+1; return a; }, {});
+  const lc = candidates.reduce((a,c)=>{ if(c.interview_level) a[c.interview_level]=(a[c.interview_level]||0)+1; return a; }, {});
+
+  document.getElementById("page-content").innerHTML = `
+    <div class="space-y-6">
+      <div class="flex justify-end gap-2">
+        <button onclick="exportCSV()" class="text-sm px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 font-medium">⬇ Export CSV</button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-xl border border-slate-200 p-5">
+          <h3 class="font-semibold mb-4">By Status</h3>
+          <div class="space-y-2">
+            ${Object.entries(sc).map(([k,v])=>`
+              <div class="flex items-center gap-3">
+                <span class="w-36 text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[k]||'bg-gray-100 text-gray-700'} truncate">${k}</span>
+                <div class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                  <div class="bg-blue-500 h-full rounded-full" style="width:${candidates.length ? Math.round(v/candidates.length*100) : 0}%"></div>
+                </div>
+                <span class="text-sm font-semibold w-6 text-right">${v}</span>
+              </div>`).join("") || '<p class="text-sm text-slate-400 text-center py-8">No data</p>'}
+          </div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-5">
+          <h3 class="font-semibold mb-4">By Interview Level</h3>
+          <div class="space-y-2">
+            ${Object.entries(lc).map(([k,v])=>`
+              <div class="flex items-center gap-3">
+                <span class="w-24 text-sm text-slate-600">${k}</span>
+                <div class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                  <div class="bg-indigo-500 h-full rounded-full" style="width:${candidates.length ? Math.round(v/candidates.length*100) : 0}%"></div>
+                </div>
+                <span class="text-sm font-semibold w-6 text-right">${v}</span>
+              </div>`).join("") || '<p class="text-sm text-slate-400 text-center py-8">No data</p>'}
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <h3 class="font-semibold mb-1">Key Metrics</h3>
+        <p class="text-xs text-slate-400 mb-4">Based on ${candidates.length} total candidates</p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          ${[
+            ["Selection Rate", candidates.length ? Math.round(((sc["Selected"]||0)+(sc["Offer Released"]||0))/candidates.length*100)+"%" : "—", "text-emerald-600"],
+            ["Offer Release Rate", candidates.length ? Math.round((sc["Offer Released"]||0)/candidates.length*100)+"%" : "—", "text-amber-600"],
+            ["No Show Rate", candidates.length ? Math.round((sc["No Show"]||0)/candidates.length*100)+"%" : "—", "text-red-500"],
+            ["Confirmation Rate", candidates.length ? Math.round((sc["Confirmed"]||0)/candidates.length*100)+"%" : "—", "text-blue-600"],
+          ].map(([l,v,c])=>`
+            <div class="bg-slate-50 rounded-lg p-4 text-center">
+              <p class="text-2xl font-bold ${c}">${v}</p>
+              <p class="text-xs text-slate-500 mt-1">${l}</p>
+            </div>`).join("")}
+        </div>
+      </div>
+    </div>`;
+}
+
+async function exportCSV() {
+  let q = sb.from("candidates").select("name, email, contact, experience_years, current_company, notice_period, recruiter_name, interview_level, status, interview_date, created_at");
+  if (currentDomainId) q = q.eq("domain_id", currentDomainId);
+  const { data } = await q;
+  if (!data?.length) return showToast("No data to export", "error");
+  const headers = Object.keys(data[0]);
+  const csv = [headers.join(","), ...data.map(r => headers.map(h => `"${(r[h]||"").toString().replace(/"/g,'""')}"`).join(","))].join("\n");
+  const a = document.createElement("a");
+  a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+  a.download = `candidates_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  showToast("CSV exported!");
+}
+
+// ============ MODAL HELPERS ============
+function openModal(title, body, footer) {
+  document.getElementById("modal-title").textContent = title;
+  document.getElementById("modal-body").innerHTML = body;
+  document.getElementById("modal-footer").innerHTML = footer || "";
+  document.getElementById("modal").classList.remove("hidden");
+}
+function closeModal() { document.getElementById("modal").classList.add("hidden"); }
+document.getElementById("modal").addEventListener("click", e => { if (e.target === document.getElementById("modal")) closeModal(); });
+
+// ============ TOAST ============
+function showToast(msg, type = "success") {
+  const t = document.getElementById("toast");
+  const icon = type === "error" ? "✗" : "✓";
+  t.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
+  t.className = `fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-xl text-sm fade-in flex items-center gap-2 max-w-xs ${type === "error" ? "bg-red-600" : "bg-slate-900"} text-white`;
+  t.classList.remove("hidden");
+  setTimeout(() => t.classList.add("hidden"), 3000);
+}
+
+// ============ NOTIFICATIONS ============
+function toggleNotifications() {
+  document.getElementById("notif-panel").classList.toggle("hidden");
+}
+function markAllRead() { document.getElementById("notif-panel").classList.add("hidden"); }
+
+// Close notif panel on outside click
+document.addEventListener("click", e => {
+  const panel = document.getElementById("notif-panel");
+  if (!panel.classList.contains("hidden") && !panel.parentElement.contains(e.target)) {
+    panel.classList.add("hidden");
+  }
+});
+</script>
+</body>
+</html>

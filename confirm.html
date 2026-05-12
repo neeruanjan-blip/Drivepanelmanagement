@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interview Response – Drive & Panel Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform:none; } }
+    .fade-in { animation: fadeIn 0.3s ease; }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-950 to-slate-800 flex items-center justify-center p-4">
+  <div id="card" class="bg-white rounded-2xl shadow-2xl p-10 max-w-md w-full text-center fade-in">
+    <div id="loading">
+      <div class="w-12 h-12 border-4 border-blue-200 border-t-blue-700 rounded-full animate-spin mx-auto mb-4"></div>
+      <p class="text-slate-500 text-sm">Processing your response…</p>
+    </div>
+    <div id="result" class="hidden"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+    // !! Replace with your credentials !!
+    const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co";
+    const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function processResponse() {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get("token");
+      const action = params.get("action"); // confirm | decline
+      const type = params.get("type") || "candidate"; // candidate | panel
+      const status = params.get("status"); // for panel availability
+
+      if (!token) return showResult("error", "Invalid Link", "This link is missing required information.");
+
+      try {
+        if (type === "candidate" && action) {
+          const { data: candidate, error } = await sb
+            .from("candidates")
+            .select("id, name, status")
+            .eq("confirmation_token", token)
+            .single();
+
+          if (error || !candidate) return showResult("error", "Link Expired", "This confirmation link is invalid or has already been used.");
+
+          const newStatus = action === "confirm" ? "Confirmed" : "Declined";
+          const { error: updateError } = await sb
+            .from("candidates")
+            .update({ status: newStatus, confirmed_at: new Date().toISOString() })
+            .eq("id", candidate.id);
+
+          if (updateError) throw updateError;
+
+          if (action === "confirm") {
+            showResult("success", "✓ Interview Confirmed!", `Thank you, <strong>${candidate.name}</strong>. Your interview attendance has been confirmed. You will receive further details via email.`);
+          } else {
+            showResult("decline", "Interview Declined", `We've noted your response, <strong>${candidate.name}</strong>. The recruiter will be notified. We hope to see you in future opportunities.`);
+          }
+        }
+
+        if (type === "panel" && status) {
+          const { data: panel, error } = await sb
+            .from("panel_members")
+            .select("id, name")
+            .eq("availability_token", token)
+            .single();
+
+          if (error || !panel) return showResult("error", "Link Expired", "This availability link is invalid or has expired.");
+
+          await sb.from("panel_members").update({
+            availability: status,
+            availability_updated_at: new Date().toISOString()
+          }).eq("id", panel.id);
+
+          const color = status === "Available" ? "text-green-600" : status === "On Leave" ? "text-amber-600" : "text-red-600";
+          showResult("success", "Availability Updated",
+            `Thank you, <strong>${panel.name}</strong>. Your availability has been marked as <span class="${color} font-semibold">${status}</span>.`);
+        }
+      } catch (e) {
+        showResult("error", "Something went wrong", e.message || "Please contact your admin.");
+      }
+    }
+
+    function showResult(type, title, message) {
+      document.getElementById("loading").classList.add("hidden");
+      const result = document.getElementById("result");
+      result.classList.remove("hidden");
+
+      const icons = {
+        success: `<div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg></div>`,
+        decline: `<div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>`,
+        error: `<div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>`,
+      };
+
+      result.innerHTML = `
+        ${icons[type] || icons.error}
+        <h2 class="text-xl font-bold text-slate-900 mb-3">${title}</h2>
+        <p class="text-slate-600 leading-relaxed">${message}</p>
+        <p class="text-xs text-slate-400 mt-8">You can safely close this window.</p>
+      `;
+    }
+
+    processResponse();
+  </script>
+</body>
+</html>
