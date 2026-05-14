@@ -1,964 +1,472 @@
+html
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Drive & Panel Management</title>
-
-  <!-- Supabase CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-
-  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-
-  <script>
-    // !! SET YOUR SUPABASE CREDENTIALS HERE !!
-    const SUPABASE_URL = "https://npkejmwqgmavdtviuxlk.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_WEQUeQHPjdmSKpmYr8VSMw_kBHAKCq9";
-  </script>
-
   <style>
-    [x-cloak] { display: none !important; }
-    .sidebar-link.active { background: #1e40af; color: white; }
-    .status-badge { @apply px-2 py-0.5 rounded-full text-xs font-medium; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #f8fafc; color: #1e293b; }
     .fade-in { animation: fadeIn 0.2s ease; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-    .modal-backdrop { backdrop-filter: blur(2px); }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .sidebar-link { display:flex; align-items:center; gap:12px; width:100%; padding:10px 12px; border-radius:8px; color:#cbd5e1; font-size:14px; border:none; background:none; cursor:pointer; text-align:left; transition:background 0.15s,color 0.15s; }
+    .sidebar-link:hover { background:#334155; color:#fff; }
+    .sidebar-link.active { background:#1e40af; color:#fff; }
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1000; align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(2px); }
+    .modal-overlay.open { display:flex; }
+    input, select, textarea { font-family:inherit; }
+    .table-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:14px; }
+    th { text-align:left; padding:10px 16px; font-size:11px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color:#64748b; background:#f8fafc; border-bottom:1px solid #e2e8f0; white-space:nowrap; }
+    td { padding:10px 16px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+    tr:last-child td { border-bottom:none; }
+    tr:hover td { background:#f8fafc; }
+    .badge { display:inline-flex; align-items:center; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:600; white-space:nowrap; }
+    .btn-primary { background:#1d4ed8; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.15s; }
+    .btn-primary:hover { background:#1e40af; }
+    .btn-ghost { background:none; border:1px solid #e2e8f0; padding:8px 16px; border-radius:8px; font-size:13px; cursor:pointer; color:#475569; transition:background 0.15s; }
+    .btn-ghost:hover { background:#f1f5f9; }
+    .form-input { width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:8px 12px; font-size:13px; outline:none; transition:border 0.15s; background:#fff; }
+    .form-input:focus { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,0.1); }
+    .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px; }
+    .card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden; }
+    .stat-card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:20px; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen">
+<body>
 
-<!-- ==================== APP ROOT ==================== -->
-<div id="app">
-
-  <!-- LOGIN PAGE -->
-  <div id="page-login" class="hidden min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-950 to-slate-800">
-    <div class="bg-white rounded-2xl shadow-2xl p-10 w-full max-w-md fade-in">
-      <div class="text-center mb-8">
-        <div class="inline-flex items-center justify-center w-14 h-14 bg-blue-100 rounded-2xl mb-4">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1e40af" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        </div>
-        <h1 class="text-2xl font-bold text-slate-900">Drive & Panel Management</h1>
-        <p class="text-slate-500 mt-1 text-sm">Sign in to your account</p>
-      </div>
-      <div id="login-error" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-4 text-sm"></div>
-      <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
-          <input id="login-email" type="email" placeholder="admin@company.com"
-            class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
-          <input id="login-password" type="password" placeholder="••••••••"
-            class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-        </div>
-        <button onclick="handleLogin()" id="login-btn"
-          class="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-lg transition text-sm">
-          Sign In
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MAIN APP (shown after login) -->
-  <div id="page-app" class="hidden flex h-screen overflow-hidden">
-
-    <!-- SIDEBAR -->
-    <aside class="w-60 bg-slate-900 text-white flex flex-col shrink-0">
-      <div class="px-5 py-5 border-b border-slate-700">
-        <h1 class="font-bold text-base leading-tight">Drive & Panel<br>Management</h1>
-        <p id="user-domain" class="text-xs text-slate-400 mt-1"></p>
-      </div>
-
-      <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        <button onclick="navigate('dashboard')" class="sidebar-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white text-sm transition" data-page="dashboard">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-          Dashboard
-        </button>
-        <button onclick="navigate('domains')" class="sidebar-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white text-sm transition" data-page="domains" id="nav-domains">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-          Domains
-        </button>
-        <button onclick="navigate('panels')" class="sidebar-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white text-sm transition" data-page="panels">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Panel Members
-        </button>
-        <button onclick="navigate('drives')" class="sidebar-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white text-sm transition" data-page="drives">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
-          Drive Sheets
-        </button>
-        <button onclick="navigate('candidates')" class="sidebar-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white text-sm transition" data-page="candidates">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          Candidates
-        </button>
-        <button onclick="navigate('reports')" class="sidebar-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white text-sm transition" data-page="reports">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          Reports
-        </button>
-      </nav>
-
-      <!-- User info -->
-      <div class="px-4 py-4 border-t border-slate-700">
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-sm font-bold" id="user-avatar">?</div>
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium truncate" id="user-name">Loading…</p>
-            <p class="text-xs text-slate-400 truncate capitalize" id="user-role"></p>
-          </div>
-          <button onclick="handleLogout()" title="Sign out" class="text-slate-400 hover:text-white">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          </button>
-        </div>
-      </div>
-    </aside>
-
-    <!-- MAIN CONTENT AREA -->
-    <main class="flex-1 overflow-y-auto bg-slate-50">
-
-      <!-- TOP BAR -->
-      <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-        <div>
-          <h2 id="page-title" class="text-lg font-semibold text-slate-900">Dashboard</h2>
-          <p id="page-subtitle" class="text-xs text-slate-400 mt-0.5"></p>
-        </div>
-        <div class="flex items-center gap-3">
-          <!-- Domain Filter -->
-          <select id="global-domain-filter" onchange="onDomainChange()" class="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">All Domains</option>
-          </select>
-          <!-- Notifications -->
-          <div class="relative">
-            <button onclick="toggleNotifications()" class="relative p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-              <span id="notif-badge" class="hidden absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">0</span>
-            </button>
-            <div id="notif-panel" class="hidden absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
-              <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                <span class="font-medium text-sm">Notifications</span>
-                <button onclick="markAllRead()" class="text-xs text-blue-600 hover:underline">Mark all read</button>
-              </div>
-              <div id="notif-list" class="max-h-72 overflow-y-auto divide-y divide-slate-100"></div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <!-- PAGE CONTENT -->
-      <div class="p-6" id="page-content">
-        <!-- Rendered dynamically -->
-      </div>
-    </main>
+<!-- LOADING SPINNER -->
+<div id="page-loading" style="position:fixed;inset:0;background:#fff;display:flex;align-items:center;justify-content:center;z-index:9999">
+  <div style="text-align:center">
+    <div style="width:40px;height:40px;border:3px solid #dbeafe;border-top-color:#1d4ed8;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px"></div>
+    <p style="color:#64748b;font-size:14px;margin:0">Loading…</p>
   </div>
 </div>
 
-<!-- ==================== MODAL ==================== -->
-<div id="modal" class="hidden fixed inset-0 bg-black/40 modal-backdrop z-50 flex items-center justify-center p-4">
-  <div id="modal-box" class="bg-white rounded-2xl shadow-2xl w-full max-w-lg fade-in max-h-[90vh] overflow-y-auto">
-    <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-      <h3 id="modal-title" class="font-semibold text-slate-900"></h3>
-      <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+<!-- LOGIN PAGE -->
+<div id="page-login" style="display:none;min-height:100vh;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e3a8a,#1e293b)">
+  <div style="background:#fff;border-radius:20px;width:100%;max-width:440px;box-shadow:0 24px 64px rgba(0,0,0,0.25);overflow:hidden" class="fade-in">
+    <div style="padding:32px 36px 24px;text-align:center;border-bottom:1px solid #f1f5f9">
+      <div style="display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;background:#dbeafe;border-radius:14px;margin-bottom:14px">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <h1 style="font-size:21px;font-weight:700;color:#0f172a;margin:0 0 4px">Drive & Panel Management</h1>
+      <p style="color:#64748b;font-size:13px;margin:0">Choose your login type to continue</p>
+    </div>
+    <div style="display:flex;border-bottom:1px solid #e2e8f0">
+      <button id="tab-admin" onclick="switchLoginTab('admin')" style="flex:1;padding:14px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s;background:#fff;color:#1d4ed8;border-bottom:2px solid #1d4ed8">🔐 Admin Login</button>
+      <button id="tab-recruiter" onclick="switchLoginTab('recruiter')" style="flex:1;padding:14px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s;background:#fff;color:#94a3b8;border-bottom:2px solid transparent">👤 Recruiter Login</button>
+    </div>
+    <div id="login-error" style="display:none;background:#fef2f2;border-left:4px solid #dc2626;color:#dc2626;padding:10px 16px;font-size:13px;margin:16px 36px 0;border-radius:4px"></div>
+    <div id="login-success" style="display:none;background:#f0fdf4;border-left:4px solid #16a34a;color:#15803d;padding:10px 16px;font-size:13px;margin:16px 36px 0;border-radius:4px"></div>
+
+    <!-- ADMIN TAB -->
+    <div id="login-admin-panel" style="padding:24px 36px 32px">
+      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:10px 14px;margin-bottom:20px;font-size:12px;color:#0369a1;display:flex;gap:8px">
+        <span>ℹ️</span><span>Admin accounts have full access. Login with your registered email and password.</span>
+      </div>
+      <div style="margin-bottom:14px">
+        <label class="form-label">Email Address</label>
+        <input id="admin-email" type="email" class="form-input" placeholder="admin@company.com" onkeydown="if(event.key==='Enter')handleAdminLogin()" />
+      </div>
+      <div style="margin-bottom:22px">
+        <label class="form-label">Password</label>
+        <div style="position:relative">
+          <input id="admin-password" type="password" class="form-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')handleAdminLogin()" style="padding-right:40px" />
+          <button onclick="togglePwd('admin-password',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#94a3b8;padding:2px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <button id="admin-login-btn" class="btn-primary" style="width:100%;padding:11px;font-size:14px" onclick="handleAdminLogin()">Sign In as Admin</button>
+      <p style="color:#94a3b8;font-size:11px;text-align:center;margin-top:16px;margin-bottom:0">Admin accounts are created in Supabase → Authentication → Users</p>
+    </div>
+
+    <!-- RECRUITER TAB -->
+    <div id="login-recruiter-panel" style="display:none;padding:24px 36px 32px">
+      <div style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:10px;padding:10px 14px;margin-bottom:20px;font-size:12px;color:#7e22ce;display:flex;gap:8px">
+        <span>✉️</span><span>Recruiter login uses a One-Time Password (OTP) sent to your email. No password needed.</span>
+      </div>
+      <div id="otp-step1">
+        <div style="margin-bottom:20px">
+          <label class="form-label">Recruiter Email Address</label>
+          <input id="recruiter-email" type="email" class="form-input" placeholder="recruiter@company.com" onkeydown="if(event.key==='Enter')handleSendOTP()" />
+        </div>
+        <button id="send-otp-btn" class="btn-primary" style="width:100%;padding:11px;font-size:14px" onclick="handleSendOTP()">Send OTP to Email</button>
+      </div>
+      <div id="otp-step2" style="display:none">
+        <div style="text-align:center;margin-bottom:20px">
+          <div style="font-size:28px;margin-bottom:8px">📬</div>
+          <p style="font-size:13px;color:#475569;margin:0">OTP sent to <strong id="otp-sent-to"></strong></p>
+          <p style="font-size:12px;color:#94a3b8;margin:4px 0 0">Check your inbox. Valid for 60 seconds.</p>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center;margin-bottom:20px">
+          <input type="text" maxlength="1" class="otp-digit" oninput="otpInput(this,0)" onkeydown="otpKey(event,0)" style="width:44px;height:50px;text-align:center;font-size:20px;font-weight:700;border:2px solid #e2e8f0;border-radius:10px;outline:none;transition:border .15s" />
+          <input type="text" maxlength="1" class="otp-digit" oninput="otpInput(this,1)" onkeydown="otpKey(event,1)" style="width:44px;height:50px;text-align:center;font-size:20px;font-weight:700;border:2px solid #e2e8f0;border-radius:10px;outline:none;transition:border .15s" />
+          <input type="text" maxlength="1" class="otp-digit" oninput="otpInput(this,2)" onkeydown="otpKey(event,2)" style="width:44px;height:50px;text-align:center;font-size:20px;font-weight:700;border:2px solid #e2e8f0;border-radius:10px;outline:none;transition:border .15s" />
+          <input type="text" maxlength="1" class="otp-digit" oninput="otpInput(this,3)" onkeydown="otpKey(event,3)" style="width:44px;height:50px;text-align:center;font-size:20px;font-weight:700;border:2px solid #e2e8f0;border-radius:10px;outline:none;transition:border .15s" />
+          <input type="text" maxlength="1" class="otp-digit" oninput="otpInput(this,4)" onkeydown="otpKey(event,4)" style="width:44px;height:50px;text-align:center;font-size:20px;font-weight:700;border:2px solid #e2e8f0;border-radius:10px;outline:none;transition:border .15s" />
+          <input type="text" maxlength="1" class="otp-digit" oninput="otpInput(this,5)" onkeydown="otpKey(event,5)" style="width:44px;height:50px;text-align:center;font-size:20px;font-weight:700;border:2px solid #e2e8f0;border-radius:10px;outline:none;transition:border .15s" />
+        </div>
+        <button id="verify-otp-btn" class="btn-primary" style="width:100%;padding:11px;font-size:14px;margin-bottom:12px" onclick="handleVerifyOTP()">Verify OTP & Sign In</button>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <button onclick="resetOTPStep()" style="background:none;border:none;cursor:pointer;color:#64748b;font-size:12px;padding:0">← Change email</button>
+          <button id="resend-btn" onclick="handleResendOTP()" style="background:none;border:none;cursor:pointer;color:#1d4ed8;font-size:12px;padding:0">Resend OTP</button>
+        </div>
+        <div id="otp-timer" style="text-align:center;margin-top:12px;font-size:12px;color:#94a3b8"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="page-app" style="display:none;height:100vh;overflow:hidden">
+  <div style="display:flex;height:100%">
+    <aside style="width:220px;background:#0f172a;color:#fff;display:flex;flex-direction:column;flex-shrink:0">
+      <div style="padding:20px 16px 16px;border-bottom:1px solid #1e293b">
+        <div style="font-weight:700;font-size:14px;line-height:1.4;color:#fff">Drive & Panel<br>Management</div>
+      </div>
+      <nav style="flex:1;padding:12px 8px;overflow-y:auto;display:flex;flex-direction:column;gap:2px">
+        <button class="sidebar-link" data-page="dashboard" onclick="navigate('dashboard')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard
+        </button>
+        <button class="sidebar-link" id="nav-domains" data-page="domains" onclick="navigate('domains')" style="display:none">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Domains
+        </button>
+        <button class="sidebar-link" data-page="panels" onclick="navigate('panels')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Panel Members
+        </button>
+        <button class="sidebar-link" data-page="drives" onclick="navigate('drives')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Drive Sheets
+        </button>
+        <button class="sidebar-link" data-page="candidates" onclick="navigate('candidates')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Candidates
+        </button>
+        <button class="sidebar-link" data-page="reports" onclick="navigate('reports')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Reports
+        </button>
+      </nav>
+      <div style="padding:12px;border-top:1px solid #1e293b;display:flex;align-items:center;gap:10px">
+        <div id="user-avatar" style="width:32px;height:32px;min-width:32px;border-radius:50%;background:#1d4ed8;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">?</div>
+        <div style="flex:1;min-width:0">
+          <div id="user-name" style="font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">…</div>
+          <div id="user-role" style="font-size:11px;color:#64748b;text-transform:capitalize">…</div>
+        </div>
+        <button onclick="handleLogout()" style="background:none;border:none;cursor:pointer;color:#64748b;padding:4px;flex-shrink:0" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#64748b'">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </aside>
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0">
+      <header style="background:#fff;border-bottom:1px solid #e2e8f0;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+        <div>
+          <h2 id="page-title" style="font-size:17px;font-weight:700;color:#0f172a;margin:0">Dashboard</h2>
+          <p id="page-subtitle" style="font-size:12px;color:#94a3b8;margin:2px 0 0"></p>
+        </div>
+        <select id="global-domain-filter" onchange="onDomainChange()" style="font-size:13px;border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;background:#fff;cursor:pointer;outline:none">
+          <option value="">All Domains</option>
+        </select>
+      </header>
+      <div style="flex:1;overflow-y:auto">
+        <div id="page-content" style="padding:24px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="modal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)" class="fade-in">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid #f1f5f9;position:sticky;top:0;background:#fff;z-index:1">
+      <h3 id="modal-title" style="font-size:16px;font-weight:700;color:#0f172a;margin:0"></h3>
+      <button onclick="closeModal()" style="background:none;border:none;cursor:pointer;color:#94a3b8;padding:4px">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div id="modal-body" class="px-6 py-4"></div>
-    <div id="modal-footer" class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3"></div>
+    <div id="modal-body" style="padding:20px 24px"></div>
+    <div id="modal-footer" style="padding:14px 24px;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;background:#fff"></div>
   </div>
 </div>
 
 <!-- TOAST -->
-<div id="toast" class="hidden fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl text-sm fade-in flex items-center gap-2 max-w-xs"></div>
+<div id="toast" style="position:fixed;bottom:24px;right:24px;z-index:9999;display:none;padding:12px 16px;border-radius:10px;font-size:13px;color:#fff;gap:8px;align-items:center;max-width:320px;box-shadow:0 4px 20px rgba(0,0,0,0.2)"></div>
 
-<!-- ==================== APP SCRIPT ==================== -->
 <script>
-// ============ SUPABASE INIT ============
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-let currentUser = null;
-let currentProfile = null;
-let currentDomainId = "";
-let domains = [];
+// =============================================
+// !! REPLACE THESE TWO VALUES WITH YOURS !!
+// Found in: Supabase → Project Settings → API
+// =============================================
+const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
 
-const CANDIDATE_STATUSES = [
-  "Scheduled","Confirmed","No Show","L1 Cleared","L1 Rejected",
-  "L2 Cleared","L2 Rejected","Managerial Cleared","HR Round",
-  "Selected","Rejected","Offer Released"
-];
-
-const STATUS_COLORS = {
-  "Scheduled": "bg-blue-100 text-blue-800",
-  "Confirmed": "bg-green-100 text-green-800",
-  "No Show": "bg-gray-100 text-gray-800",
-  "L1 Cleared": "bg-teal-100 text-teal-800",
-  "L1 Rejected": "bg-red-100 text-red-800",
-  "L2 Cleared": "bg-teal-100 text-teal-800",
-  "L2 Rejected": "bg-red-100 text-red-800",
-  "Managerial Cleared": "bg-indigo-100 text-indigo-800",
-  "HR Round": "bg-violet-100 text-violet-800",
-  "Selected": "bg-emerald-100 text-emerald-800",
-  "Rejected": "bg-red-100 text-red-800",
-  "Offer Released": "bg-amber-100 text-amber-800",
-};
-
-const AVAIL_COLORS = {
-  "Available": "bg-green-100 text-green-800",
-  "Unavailable": "bg-red-100 text-red-800",
-  "On Leave": "bg-amber-100 text-amber-800",
-};
-
-// ============ INIT ============
-window.addEventListener("DOMContentLoaded", () => {
-  sb.auth.onAuthStateChange(async (event, session) => {
-    if (session?.user) {
-      currentUser = session.user;
-      const { data: profile } = await sb.from("profiles").select("*").eq("id", session.user.id).single();
-      currentProfile = profile;
-      await loadDomains();
-      showApp();
-      navigate("dashboard");
-    } else {
-      currentUser = null;
-      currentProfile = null;
-      showLogin();
-    }
-  });
+// =============================================
+// GLOBALS
+// =============================================
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true }
 });
+let currentUser = null, currentProfile = null, currentDomainId = "", domains = [], _authReady = false;
 
-function showLogin() {
-  document.getElementById("page-login").classList.remove("hidden");
-  document.getElementById("page-app").classList.add("hidden");
+const STATUSES = ["Scheduled","Confirmed","No Show","L1 Cleared","L1 Rejected","L2 Cleared","L2 Rejected","Managerial Cleared","HR Round","Selected","Rejected","Offer Released"];
+const SC = {"Scheduled":"#dbeafe|#1e40af","Confirmed":"#dcfce7|#15803d","No Show":"#f1f5f9|#64748b","L1 Cleared":"#ccfbf1|#0f766e","L1 Rejected":"#fee2e2|#b91c1c","L2 Cleared":"#ccfbf1|#0f766e","L2 Rejected":"#fee2e2|#b91c1c","Managerial Cleared":"#e0e7ff|#3730a3","HR Round":"#f3e8ff|#7e22ce","Selected":"#d1fae5|#065f46","Rejected":"#fee2e2|#b91c1c","Offer Released":"#fef9c3|#92400e"};
+const AC = {"Available":"#dcfce7|#15803d","Unavailable":"#fee2e2|#b91c1c","On Leave":"#fef3c7|#92400e"};
+const badge = (t,map) => { const [bg,fg]=(map[t]||"#f1f5f9|#64748b").split("|"); return `<span class="badge" style="background:${bg};color:${fg}">${t}</span>`; };
+
+// =============================================
+// LOGIN TAB SWITCHING
+// =============================================
+function switchLoginTab(tab) {
+  const a = tab==="admin";
+  document.getElementById("login-admin-panel").style.display = a?"block":"none";
+  document.getElementById("login-recruiter-panel").style.display = a?"none":"block";
+  document.getElementById("tab-admin").style.cssText = `flex:1;padding:14px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:#fff;transition:all .2s;color:${a?"#1d4ed8":"#94a3b8"};border-bottom:2px solid ${a?"#1d4ed8":"transparent"}`;
+  document.getElementById("tab-recruiter").style.cssText = `flex:1;padding:14px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:#fff;transition:all .2s;color:${a?"#94a3b8":"#7c3aed"};border-bottom:2px solid ${a?"transparent":"#7c3aed"}`;
+  clearLoginMessages();
+}
+function clearLoginMessages() { document.getElementById("login-error").style.display="none"; document.getElementById("login-success").style.display="none"; }
+function showLoginError(msg) { const e=document.getElementById("login-error"); e.textContent=msg; e.style.display="block"; document.getElementById("login-success").style.display="none"; }
+function showLoginSuccess(msg) { const s=document.getElementById("login-success"); s.textContent=msg; s.style.display="block"; document.getElementById("login-error").style.display="none"; }
+function togglePwd(id,btn) {
+  const inp=document.getElementById(id); const t=inp.type==="text";
+  inp.type=t?"password":"text";
+  btn.innerHTML=t?`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
 }
 
-function showApp() {
-  document.getElementById("page-login").classList.add("hidden");
-  document.getElementById("page-app").classList.remove("hidden");
-  const name = currentProfile?.full_name || currentUser?.email?.split("@")[0] || "User";
-  document.getElementById("user-name").textContent = name;
-  document.getElementById("user-role").textContent = currentProfile?.role || "user";
-  document.getElementById("user-avatar").textContent = name[0].toUpperCase();
-  if (currentProfile?.role !== "admin") {
-    document.getElementById("nav-domains").classList.add("hidden");
-  }
+// =============================================
+// ADMIN LOGIN
+// =============================================
+async function handleAdminLogin() {
+  const email=document.getElementById("admin-email").value.trim(), password=document.getElementById("admin-password").value;
+  const btn=document.getElementById("admin-login-btn");
+  clearLoginMessages();
+  if(!email||!password) return showLoginError("Please enter your email and password.");
+  btn.textContent="Signing in…"; btn.disabled=true;
+  const {error}=await sb.auth.signInWithPassword({email,password});
+  if(error){showLoginError(error.message); btn.textContent="Sign In as Admin"; btn.disabled=false;}
 }
 
-async function handleLogin() {
-  const email = document.getElementById("login-email").value.trim();
-  const password = document.getElementById("login-password").value;
-  const btn = document.getElementById("login-btn");
-  const err = document.getElementById("login-error");
-  err.classList.add("hidden");
-  btn.textContent = "Signing in…";
-  btn.disabled = true;
+// =============================================
+// RECRUITER OTP LOGIN
+// =============================================
+let _otpTimer=null, _otpEmail="";
+
+async function handleSendOTP() {
+  const email=document.getElementById("recruiter-email").value.trim();
+  const btn=document.getElementById("send-otp-btn");
+  clearLoginMessages();
+  if(!email) return showLoginError("Please enter your email address.");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showLoginError("Please enter a valid email.");
+  btn.textContent="Sending OTP…"; btn.disabled=true;
   try {
-    const { error } = await sb.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-  } catch (e) {
-    err.textContent = e.message;
-    err.classList.remove("hidden");
-  } finally {
-    btn.textContent = "Sign In";
-    btn.disabled = false;
-  }
+    const {error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:false}});
+    if(error) throw error;
+    _otpEmail=email;
+    document.getElementById("otp-sent-to").textContent=email;
+    document.getElementById("otp-step1").style.display="none";
+    document.getElementById("otp-step2").style.display="block";
+    showLoginSuccess("OTP sent! Check your inbox.");
+    startOTPTimer(60);
+    setTimeout(()=>document.querySelector(".otp-digit")?.focus(),100);
+  } catch(e) { showLoginError(e.message||"Failed to send OTP. Make sure your email is registered."); }
+  finally { btn.textContent="Send OTP to Email"; btn.disabled=false; }
 }
 
-async function handleLogout() {
-  await sb.auth.signOut();
-}
-
-// ============ NAVIGATION ============
-async function navigate(page) {
-  document.querySelectorAll(".sidebar-link").forEach(l => l.classList.remove("active", "text-white", "bg-blue-700"));
-  const activeLink = document.querySelector(`[data-page="${page}"]`);
-  if (activeLink) activeLink.classList.add("active");
-
-  const titles = {
-    dashboard: ["Dashboard", "Real-time overview"],
-    domains: ["Domain Management", "Manage hiring domains"],
-    panels: ["Panel Members", "Manage interview panel"],
-    drives: ["Drive Sheets", "Manage interview drives"],
-    candidates: ["Candidates", "Track candidate pipeline"],
-    reports: ["Reports & Analytics", "Export and analyze data"],
-  };
-  document.getElementById("page-title").textContent = titles[page]?.[0] || page;
-  document.getElementById("page-subtitle").textContent = titles[page]?.[1] || "";
-
-  const content = document.getElementById("page-content");
-  content.innerHTML = `<div class="flex items-center justify-center py-20 text-slate-400 text-sm">Loading…</div>`;
-
-  if (page === "dashboard") await renderDashboard();
-  else if (page === "domains") await renderDomains();
-  else if (page === "panels") await renderPanels();
-  else if (page === "drives") await renderDrives();
-  else if (page === "candidates") await renderCandidates();
-  else if (page === "reports") await renderReports();
-}
-
-async function loadDomains() {
-  const { data } = await sb.from("domains").select("*").order("name");
-  domains = data || [];
-  const sel = document.getElementById("global-domain-filter");
-  sel.innerHTML = `<option value="">All Domains</option>` +
-    domains.map(d => `<option value="${d.id}">${d.name}</option>`).join("");
-}
-
-function onDomainChange() {
-  currentDomainId = document.getElementById("global-domain-filter").value;
-  const page = document.querySelector(".sidebar-link.active")?.dataset?.page || "dashboard";
-  navigate(page);
-}
-
-// ============ DASHBOARD ============
-async function renderDashboard() {
-  let q = sb.from("candidates").select("status, interview_level, domain_id");
-  if (currentDomainId) q = q.eq("domain_id", currentDomainId);
-  const { data: candidates = [] } = await q;
-
-  let pq = sb.from("panel_members").select("availability, domain_id");
-  if (currentDomainId) pq = pq.eq("domain_id", currentDomainId);
-  const { data: panels = [] } = await pq;
-
-  const sc = candidates.reduce((a, c) => { a[c.status] = (a[c.status]||0)+1; return a; }, {});
-  const total = candidates.length;
-  const selected = sc["Selected"]||0;
-  const offerReleased = sc["Offer Released"]||0;
-  const noShow = sc["No Show"]||0;
-  const confirmed = sc["Confirmed"]||0;
-  const availPanels = panels.filter(p => p.availability === "Available").length;
-
-  const statCard = (label, value, sub, color) => `
-    <div class="bg-white rounded-xl border border-slate-200 p-5">
-      <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">${label}</p>
-      <p class="text-3xl font-bold mt-1 ${color}">${value}</p>
-      <p class="text-xs text-slate-400 mt-1">${sub}</p>
-    </div>`;
-
-  const statusBar = Object.entries(sc).map(([k,v]) =>
-    `<div class="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
-      <span class="px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[k]||'bg-gray-100 text-gray-700'}">${k}</span>
-      <div class="flex items-center gap-3">
-        <div class="bg-slate-100 rounded-full h-1.5 w-32 overflow-hidden">
-          <div class="bg-blue-500 h-full rounded-full" style="width:${total ? Math.round(v/total*100) : 0}%"></div>
-        </div>
-        <span class="text-sm font-semibold text-slate-700 w-6 text-right">${v}</span>
-      </div>
-    </div>`
-  ).join("");
-
-  document.getElementById("page-content").innerHTML = `
-    <div class="space-y-6">
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        ${statCard("Total Candidates", total, "across all drives", "text-slate-900")}
-        ${statCard("Confirmed", confirmed, "confirmed attendance", "text-green-600")}
-        ${statCard("Selected", selected, "passed all rounds", "text-emerald-600")}
-        ${statCard("Offer Released", offerReleased, "offers extended", "text-amber-600")}
-        ${statCard("No Show", noShow, "did not attend", "text-red-500")}
-        ${statCard("Available Panels", availPanels+"/"+panels.length, "panels available now", "text-blue-600")}
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="bg-white rounded-xl border border-slate-200 p-5">
-          <h3 class="font-semibold text-slate-900 mb-4">Candidate Pipeline</h3>
-          ${total ? statusBar : '<p class="text-sm text-slate-400 text-center py-8">No candidates yet.</p>'}
-        </div>
-        <div class="bg-white rounded-xl border border-slate-200 p-5">
-          <h3 class="font-semibold text-slate-900 mb-4">Panel Availability</h3>
-          ${panels.length ? panels.slice(0,8).map(p => `
-            <div class="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
-              <span class="text-sm text-slate-700">${p.name || "Panel member"}</span>
-              <span class="px-2 py-0.5 rounded-full text-xs font-medium ${AVAIL_COLORS[p.availability]||'bg-gray-100'}">${p.availability}</span>
-            </div>`).join("") : '<p class="text-sm text-slate-400 text-center py-8">No panel members yet.</p>'}
-        </div>
-      </div>
-    </div>`;
-}
-
-// ============ DOMAINS ============
-async function renderDomains() {
-  const { data: rows = [] } = await sb.from("domains").select("*").order("name");
-  const isAdmin = currentProfile?.role === "admin";
-
-  document.getElementById("page-content").innerHTML = `
-    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-        <p class="text-sm text-slate-500">${rows.length} domain(s)</p>
-        ${isAdmin ? `<button onclick="openDomainModal()" class="bg-blue-700 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-800 transition font-medium">+ Add Domain</button>` : ""}
-      </div>
-      <table class="w-full text-sm">
-        <thead class="bg-slate-50 text-slate-500 uppercase text-xs">
-          <tr>
-            <th class="text-left px-5 py-3">Name</th>
-            <th class="text-left px-5 py-3">Description</th>
-            <th class="text-left px-5 py-3">Status</th>
-            ${isAdmin ? `<th class="text-left px-5 py-3">Actions</th>` : ""}
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          ${rows.length ? rows.map(d => `
-            <tr class="hover:bg-slate-50">
-              <td class="px-5 py-3 font-medium">${d.name}</td>
-              <td class="px-5 py-3 text-slate-500">${d.description || "—"}</td>
-              <td class="px-5 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium ${d.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}">${d.is_active ? "Active" : "Inactive"}</span></td>
-              ${isAdmin ? `<td class="px-5 py-3 flex gap-2">
-                <button onclick="openDomainModal('${d.id}')" class="text-xs text-blue-600 hover:underline">Edit</button>
-                <button onclick="deleteDomain('${d.id}')" class="text-xs text-red-500 hover:underline">Delete</button>
-              </td>` : ""}
-            </tr>`).join("") :
-          `<tr><td colspan="4" class="text-center py-12 text-slate-400">No domains found. Add your first domain.</td></tr>`}
-        </tbody>
-      </table>
-    </div>`;
-}
-
-async function openDomainModal(id) {
-  let domain = null;
-  if (id) {
-    const { data } = await sb.from("domains").select("*").eq("id", id).single();
-    domain = data;
-  }
-  openModal(id ? "Edit Domain" : "Add Domain", `
-    <div class="space-y-4">
-      <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">Domain Name <span class="text-red-500">*</span></label>
-        <input id="f-name" value="${domain?.name||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">Description</label>
-        <textarea id="f-desc" rows="2" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">${domain?.description||""}</textarea>
-      </div>
-    </div>`,
-    `<button onclick="closeModal()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-     <button onclick="saveDomain('${id||""}')" class="px-4 py-2 text-sm bg-blue-700 text-white rounded-lg hover:bg-blue-800 font-medium">Save</button>`
-  );
-}
-
-async function saveDomain(id) {
-  const name = document.getElementById("f-name").value.trim();
-  const description = document.getElementById("f-desc").value.trim();
-  if (!name) return showToast("Domain name is required", "error");
+async function handleVerifyOTP() {
+  const digits=[...document.querySelectorAll(".otp-digit")].map(i=>i.value).join("");
+  const btn=document.getElementById("verify-otp-btn");
+  clearLoginMessages();
+  if(digits.length<6) return showLoginError("Please enter all 6 digits.");
+  btn.textContent="Verifying…"; btn.disabled=true;
   try {
-    if (id) await sb.from("domains").update({ name, description }).eq("id", id);
-    else await sb.from("domains").insert({ name, description });
-    closeModal(); await loadDomains(); await renderDomains(); showToast("Domain saved!");
-  } catch (e) { showToast(e.message, "error"); }
+    const {error}=await sb.auth.verifyOtp({email:_otpEmail,token:digits,type:"email"});
+    if(error) throw error;
+  } catch(e) {
+    showLoginError(e.message||"Invalid or expired OTP.");
+    document.querySelectorAll(".otp-digit").forEach(b=>{b.style.borderColor="#dc2626";setTimeout(()=>b.style.borderColor="#e2e8f0",2000);});
+  } finally { btn.textContent="Verify OTP & Sign In"; btn.disabled=false; }
 }
 
-async function deleteDomain(id) {
-  if (!confirm("Delete this domain? All related data will be affected.")) return;
-  await sb.from("domains").delete().eq("id", id);
-  await loadDomains(); await renderDomains(); showToast("Domain deleted");
+async function handleResendOTP() { clearOTPTimer(); document.querySelectorAll(".otp-digit").forEach(b=>{b.value="";b.style.borderColor="#e2e8f0";}); await handleSendOTP(); }
+function resetOTPStep() { clearOTPTimer(); document.getElementById("otp-step1").style.display="block"; document.getElementById("otp-step2").style.display="none"; document.querySelectorAll(".otp-digit").forEach(b=>{b.value="";b.style.borderColor="#e2e8f0";}); clearLoginMessages(); }
+function startOTPTimer(s) {
+  clearOTPTimer();
+  const t=document.getElementById("otp-timer"), rb=document.getElementById("resend-btn");
+  rb.disabled=true; rb.style.opacity="0.4"; let r=s;
+  t.textContent=`OTP expires in ${r}s`;
+  _otpTimer=setInterval(()=>{ r--; if(r<=0){clearOTPTimer();t.textContent="OTP expired. Please resend.";t.style.color="#dc2626";rb.disabled=false;rb.style.opacity="1";}else{t.textContent=`OTP expires in ${r}s`;t.style.color="#94a3b8";}},1000);
 }
+function clearOTPTimer(){if(_otpTimer){clearInterval(_otpTimer);_otpTimer=null;}}
+function otpInput(el,idx){el.value=el.value.replace(/\D/g,"").slice(-1);el.style.borderColor=el.value?"#1d4ed8":"#e2e8f0";if(el.value){const n=document.querySelectorAll(".otp-digit")[idx+1];if(n)n.focus();}const a=[...document.querySelectorAll(".otp-digit")].map(i=>i.value).join("");if(a.length===6)setTimeout(handleVerifyOTP,200);}
+function otpKey(e,idx){if(e.key==="Backspace"){const b=document.querySelectorAll(".otp-digit");if(!b[idx].value&&idx>0){b[idx-1].value="";b[idx-1].style.borderColor="#e2e8f0";b[idx-1].focus();}}}
+document.addEventListener("paste",e=>{if(!document.querySelector(".otp-digit:focus"))return;const p=(e.clipboardData||window.clipboardData).getData("text").replace(/\D/g,"").slice(0,6);if(p.length<2)return;e.preventDefault();const b=document.querySelectorAll(".otp-digit");[...p].forEach((c,i)=>{if(b[i]){b[i].value=c;b[i].style.borderColor="#1d4ed8";}});const l=Math.min(p.length,6)-1;if(b[l])b[l].focus();if(p.length===6)setTimeout(handleVerifyOTP,200);});
 
-// ============ PANELS ============
-async function renderPanels() {
-  let q = sb.from("panel_members").select("*, domains(name)").order("name");
-  if (currentDomainId) q = q.eq("domain_id", currentDomainId);
-  const { data: rows = [] } = await q;
-
-  document.getElementById("page-content").innerHTML = `
-    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-        <p class="text-sm text-slate-500">${rows.length} panel member(s)</p>
-        <button onclick="openPanelModal()" class="bg-blue-700 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-800 transition font-medium">+ Add Panel Member</button>
-      </div>
-      <table class="w-full text-sm">
-        <thead class="bg-slate-50 text-slate-500 uppercase text-xs">
-          <tr>
-            <th class="text-left px-5 py-3">Name</th>
-            <th class="text-left px-5 py-3">Domain</th>
-            <th class="text-left px-5 py-3">Level</th>
-            <th class="text-left px-5 py-3">Email</th>
-            <th class="text-left px-5 py-3">Availability</th>
-            <th class="text-left px-5 py-3">Actions</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          ${rows.length ? rows.map(p => `
-            <tr class="hover:bg-slate-50">
-              <td class="px-5 py-3 font-medium">${p.name}</td>
-              <td class="px-5 py-3 text-slate-500">${p.domains?.name || "—"}</td>
-              <td class="px-5 py-3">${p.interview_level || "—"}</td>
-              <td class="px-5 py-3 text-slate-500">${p.email}</td>
-              <td class="px-5 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium ${AVAIL_COLORS[p.availability]||'bg-gray-100'}">${p.availability}</span></td>
-              <td class="px-5 py-3 flex gap-2">
-                <button onclick="openPanelModal('${p.id}')" class="text-xs text-blue-600 hover:underline">Edit</button>
-                <button onclick="deletePanel('${p.id}')" class="text-xs text-red-500 hover:underline">Remove</button>
-              </td>
-            </tr>`).join("") :
-          `<tr><td colspan="6" class="text-center py-12 text-slate-400">No panel members. Add your first.</td></tr>`}
-        </tbody>
-      </table>
-    </div>`;
-}
-
-async function openPanelModal(id) {
-  let panel = null;
-  if (id) { const { data } = await sb.from("panel_members").select("*").eq("id", id).single(); panel = data; }
-  const domainOptions = domains.map(d => `<option value="${d.id}" ${panel?.domain_id===d.id?"selected":""}>${d.name}</option>`).join("");
-  openModal(id ? "Edit Panel Member" : "Add Panel Member", `
-    <div class="grid grid-cols-2 gap-4">
-      <div class="col-span-2">
-        <label class="block text-sm font-medium text-slate-700 mb-1">Full Name *</label>
-        <input id="f-name" value="${panel?.name||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">Email *</label>
-        <input id="f-email" type="email" value="${panel?.email||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">Domain *</label>
-        <select id="f-domain" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="">Select domain</option>${domainOptions}
-        </select>
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">Designation</label>
-        <input id="f-designation" value="${panel?.designation||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">Interview Level</label>
-        <select id="f-level" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          ${["L1","L2","Managerial","HR"].map(l=>`<option ${panel?.interview_level===l?"selected":""}>${l}</option>`).join("")}
-        </select>
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">Hiring Role</label>
-        <input id="f-role" value="${panel?.hiring_role||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">Location</label>
-        <input id="f-location" value="${panel?.location||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">Availability</label>
-        <select id="f-avail" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          ${["Available","Unavailable","On Leave"].map(a=>`<option ${panel?.availability===a?"selected":""}>${a}</option>`).join("")}
-        </select>
-      </div>
-    </div>`,
-    `<button onclick="closeModal()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-     <button onclick="savePanel('${id||""}')" class="px-4 py-2 text-sm bg-blue-700 text-white rounded-lg hover:bg-blue-800 font-medium">Save</button>`
-  );
-}
-
-async function savePanel(id) {
-  const payload = {
-    name: document.getElementById("f-name").value.trim(),
-    email: document.getElementById("f-email").value.trim(),
-    domain_id: document.getElementById("f-domain").value,
-    designation: document.getElementById("f-designation").value.trim(),
-    interview_level: document.getElementById("f-level").value,
-    hiring_role: document.getElementById("f-role").value.trim(),
-    location: document.getElementById("f-location").value.trim(),
-    availability: document.getElementById("f-avail").value,
-  };
-  if (!payload.name || !payload.email || !payload.domain_id) return showToast("Name, email and domain are required", "error");
-  try {
-    if (id) await sb.from("panel_members").update(payload).eq("id", id);
-    else await sb.from("panel_members").insert({ ...payload, created_by: currentUser.id });
-    closeModal(); await renderPanels(); showToast("Panel member saved!");
-  } catch(e) { showToast(e.message, "error"); }
-}
-
-async function deletePanel(id) {
-  if (!confirm("Remove this panel member?")) return;
-  await sb.from("panel_members").update({ is_active: false }).eq("id", id);
-  await renderPanels(); showToast("Panel member removed");
-}
-
-// ============ DRIVE SHEETS ============
-async function renderDrives() {
-  let q = sb.from("drive_sheets").select("*, domains(name)").order("created_at", { ascending: false });
-  if (currentDomainId) q = q.eq("domain_id", currentDomainId);
-  const { data: rows = [] } = await q;
-
-  document.getElementById("page-content").innerHTML = `
-    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-        <p class="text-sm text-slate-500">${rows.length} drive sheet(s)</p>
-        <button onclick="openDriveModal()" class="bg-blue-700 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-800 transition font-medium">+ New Drive</button>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-5">
-        ${rows.length ? rows.map(d => `
-          <div class="border border-slate-200 rounded-xl p-4 hover:border-blue-300 hover:shadow-sm transition cursor-pointer" onclick="navigate('candidates');sessionStorage.setItem('driveId','${d.id}')">
-            <div class="flex items-start justify-between mb-2">
-              <h4 class="font-semibold text-slate-900">${d.drive_name}</h4>
-              <span class="text-xs px-2 py-0.5 rounded-full ${d.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}">${d.is_active ? 'Active' : 'Closed'}</span>
-            </div>
-            <p class="text-xs text-slate-500 mb-3">${d.domains?.name || "No domain"} • ${d.drive_date ? new Date(d.drive_date).toLocaleDateString("en-IN") : "No date"}</p>
-            <p class="text-xs text-slate-400 line-clamp-2">${d.description || "No description"}</p>
-            <div class="flex gap-2 mt-3 pt-3 border-t border-slate-100">
-              <button onclick="event.stopPropagation();openDriveModal('${d.id}')" class="text-xs text-blue-600 hover:underline">Edit</button>
-              <button onclick="event.stopPropagation();deleteDrive('${d.id}')" class="text-xs text-red-500 hover:underline">Delete</button>
-            </div>
-          </div>`).join("") :
-        `<div class="col-span-3 text-center py-12 text-slate-400">No drives yet. Create your first drive sheet.</div>`}
-      </div>
-    </div>`;
-}
-
-async function openDriveModal(id) {
-  let drive = null;
-  if (id) { const { data } = await sb.from("drive_sheets").select("*").eq("id", id).single(); drive = data; }
-  const domainOptions = domains.map(d => `<option value="${d.id}" ${drive?.domain_id===d.id?"selected":""}>${d.name}</option>`).join("");
-  openModal(id ? "Edit Drive" : "New Drive Sheet", `
-    <div class="space-y-4">
-      <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">Drive Name *</label>
-        <input id="f-name" value="${drive?.drive_name||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Domain *</label>
-          <select id="f-domain" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Select</option>${domainOptions}
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Drive Date</label>
-          <input id="f-date" type="date" value="${drive?.drive_date||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">Description</label>
-        <textarea id="f-desc" rows="2" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">${drive?.description||""}</textarea>
-      </div>
-    </div>`,
-    `<button onclick="closeModal()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-     <button onclick="saveDrive('${id||""}')" class="px-4 py-2 text-sm bg-blue-700 text-white rounded-lg hover:bg-blue-800 font-medium">Save</button>`
-  );
-}
-
-async function saveDrive(id) {
-  const payload = {
-    drive_name: document.getElementById("f-name").value.trim(),
-    domain_id: document.getElementById("f-domain").value,
-    drive_date: document.getElementById("f-date").value || null,
-    description: document.getElementById("f-desc").value.trim(),
-  };
-  if (!payload.drive_name || !payload.domain_id) return showToast("Drive name and domain are required", "error");
-  try {
-    if (id) await sb.from("drive_sheets").update(payload).eq("id", id);
-    else await sb.from("drive_sheets").insert({ ...payload, created_by: currentUser.id });
-    closeModal(); await renderDrives(); showToast("Drive sheet saved!");
-  } catch(e) { showToast(e.message, "error"); }
-}
-
-async function deleteDrive(id) {
-  if (!confirm("Delete this drive sheet?")) return;
-  await sb.from("drive_sheets").delete().eq("id", id);
-  await renderDrives(); showToast("Drive deleted");
-}
-
-// ============ CANDIDATES ============
-async function renderCandidates() {
-  const driveId = sessionStorage.getItem("driveId") || "";
-  let drives = [];
-  { const { data } = await sb.from("drive_sheets").select("id, drive_name, domain_id").order("drive_name"); drives = data || []; }
-  if (currentDomainId) drives = drives.filter(d => d.domain_id === currentDomainId);
-
-  let q = sb.from("candidates").select(`
-    id, name, email, contact, experience_years, current_company, notice_period,
-    recruiter_name, interview_level, status, interview_link, interview_date,
-    drive_sheet_id, domain_id, created_at,
-    panel_members(name), drive_sheets(drive_name)
-  `).order("created_at", { ascending: false });
-  if (driveId) q = q.eq("drive_sheet_id", driveId);
-  if (currentDomainId) q = q.eq("domain_id", currentDomainId);
-  const { data: rows = [] } = await q;
-
-  const driveOptions = drives.map(d => `<option value="${d.id}" ${d.id===driveId?"selected":""}>${d.drive_name}</option>`).join("");
-
-  document.getElementById("page-content").innerHTML = `
-    <div class="space-y-4">
-      <div class="flex items-center gap-3 flex-wrap">
-        <select id="drive-filter" onchange="sessionStorage.setItem('driveId',this.value);renderCandidates()" class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="">All Drives</option>${driveOptions}
-        </select>
-        <button onclick="openCandidateModal()" class="ml-auto bg-blue-700 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-800 font-medium">+ Add Candidate</button>
-      </div>
-      <div class="bg-white rounded-xl border border-slate-200 overflow-x-auto">
-        <table class="w-full text-sm min-w-[900px]">
-          <thead class="bg-slate-50 text-slate-500 uppercase text-xs">
-            <tr>
-              <th class="text-left px-4 py-3">Name</th>
-              <th class="text-left px-4 py-3">Experience</th>
-              <th class="text-left px-4 py-3">Company</th>
-              <th class="text-left px-4 py-3">Level</th>
-              <th class="text-left px-4 py-3">Panel</th>
-              <th class="text-left px-4 py-3">Status</th>
-              <th class="text-left px-4 py-3">Drive</th>
-              <th class="text-left px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            ${rows.length ? rows.map(c => `
-              <tr class="hover:bg-slate-50">
-                <td class="px-4 py-3">
-                  <p class="font-medium">${c.name}</p>
-                  <p class="text-xs text-slate-400">${c.email}</p>
-                </td>
-                <td class="px-4 py-3">${c.experience_years ? c.experience_years+"y" : "—"}</td>
-                <td class="px-4 py-3 text-slate-500">${c.current_company || "—"}</td>
-                <td class="px-4 py-3">${c.interview_level || "—"}</td>
-                <td class="px-4 py-3 text-slate-500">${c.panel_members?.name || "—"}</td>
-                <td class="px-4 py-3">
-                  <select onchange="updateCandidateStatus('${c.id}',this.value)" class="text-xs rounded-full px-2 py-0.5 border-0 font-medium cursor-pointer ${STATUS_COLORS[c.status]||'bg-gray-100'}">
-                    ${CANDIDATE_STATUSES.map(s=>`<option ${s===c.status?"selected":""}>${s}</option>`).join("")}
-                  </select>
-                </td>
-                <td class="px-4 py-3 text-slate-500 text-xs">${c.drive_sheets?.drive_name || "—"}</td>
-                <td class="px-4 py-3 flex gap-2">
-                  <button onclick="openCandidateModal('${c.id}')" class="text-xs text-blue-600 hover:underline">Edit</button>
-                  <button onclick="sendConfirmEmail('${c.id}')" class="text-xs text-green-600 hover:underline" title="Send confirmation email">Email</button>
-                  <button onclick="deleteCandidate('${c.id}')" class="text-xs text-red-500 hover:underline">Del</button>
-                </td>
-              </tr>`).join("") :
-            `<tr><td colspan="8" class="text-center py-12 text-slate-400">No candidates. Add your first.</td></tr>`}
-          </tbody>
-        </table>
-      </div>
-    </div>`;
-}
-
-async function openCandidateModal(id) {
-  let cand = null;
-  if (id) { const { data } = await sb.from("candidates").select("*").eq("id", id).single(); cand = data; }
-  const drives = (await sb.from("drive_sheets").select("id, drive_name").order("drive_name")).data || [];
-  let panelMembers = (await sb.from("panel_members").select("id, name, interview_level").eq("is_active", true).order("name")).data || [];
-
-  const driveOpts = drives.map(d=>`<option value="${d.id}" ${cand?.drive_sheet_id===d.id?"selected":""}>${d.drive_name}</option>`).join("");
-  const panelOpts = panelMembers.map(p=>`<option value="${p.id}" ${cand?.panel_member_id===p.id?"selected":""}>${p.name} (${p.interview_level||""})</option>`).join("");
-  const domainOpts = domains.map(d=>`<option value="${d.id}" ${cand?.domain_id===d.id?"selected":""}>${d.name}</option>`).join("");
-
-  openModal(id ? "Edit Candidate" : "Add Candidate", `
-    <div class="grid grid-cols-2 gap-3">
-      <div class="col-span-2">
-        <label class="block text-xs font-medium text-slate-700 mb-1">Full Name *</label>
-        <input id="f-name" value="${cand?.name||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <div>
-        <label class="block text-xs font-medium text-slate-700 mb-1">Email *</label>
-        <input id="f-email" type="email" value="${cand?.email||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <div>
-        <label class="block text-xs font-medium text-slate-700 mb-1">Contact</label>
-        <input id="f-contact" value="${cand?.contact||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <div>
-        <label class="block text-xs font-medium text-slate-700 mb-1">Experience (years)</label>
-        <input id="f-exp" type="number" step="0.5" value="${cand?.experience_years||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <div>
-        <label class="block text-xs font-medium text-slate-700 mb-1">Current Company</label>
-        <input id="f-company" value="${cand?.current_company||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <div>
-        <label class="block text-xs font-medium text-slate-700 mb-1">Notice Period</label>
-        <input id="f-notice" value="${cand?.notice_period||""}" placeholder="e.g. 30 days" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <div>
-        <label class="block text-xs font-medium text-slate-700 mb-1">Recruiter Name</label>
-        <input id="f-recruiter" value="${cand?.recruiter_name||""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <div>
-        <label class="block text-xs font-medium text-slate-700 mb-1">Domain *</label>
-        <select id="f-domain" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="">Select</option>${domainOpts}
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs font-medium text-slate-700 mb-1">Drive Sheet *</label>
-        <select id="f-drive" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="">Select</option>${driveOpts}
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs font-medium text-slate-700 mb-1">Interview Level</label>
-        <select id="f-level" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          ${["L1","L2","Managerial","HR"].map(l=>`<option ${cand?.interview_level===l?"selected":""}>${l}</option>`).join("")}
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs font-medium text-slate-700 mb-1">Panel Member</label>
-        <select id="f-panel" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="">Select panel</option>${panelOpts}
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs font-medium text-slate-700 mb-1">Status</label>
-        <select id="f-status" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          ${CANDIDATE_STATUSES.map(s=>`<option ${cand?.status===s?"selected":""}>${s}</option>`).join("")}
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs font-medium text-slate-700 mb-1">Interview Date & Time</label>
-        <input id="f-idate" type="datetime-local" value="${cand?.interview_date ? cand.interview_date.slice(0,16) : ""}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <div class="col-span-2">
-        <label class="block text-xs font-medium text-slate-700 mb-1">Interview Link</label>
-        <input id="f-link" value="${cand?.interview_link||""}" placeholder="https://meet.google.com/..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-    </div>`,
-    `<button onclick="closeModal()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-     <button onclick="saveCandidate('${id||""}')" class="px-4 py-2 text-sm bg-blue-700 text-white rounded-lg hover:bg-blue-800 font-medium">Save</button>`
-  );
-}
-
-async function saveCandidate(id) {
-  const payload = {
-    name: document.getElementById("f-name").value.trim(),
-    email: document.getElementById("f-email").value.trim(),
-    contact: document.getElementById("f-contact").value.trim(),
-    experience_years: parseFloat(document.getElementById("f-exp").value) || null,
-    current_company: document.getElementById("f-company").value.trim(),
-    notice_period: document.getElementById("f-notice").value.trim(),
-    recruiter_name: document.getElementById("f-recruiter").value.trim(),
-    domain_id: document.getElementById("f-domain").value,
-    drive_sheet_id: document.getElementById("f-drive").value,
-    interview_level: document.getElementById("f-level").value,
-    panel_member_id: document.getElementById("f-panel").value || null,
-    status: document.getElementById("f-status").value,
-    interview_date: document.getElementById("f-idate").value || null,
-    interview_link: document.getElementById("f-link").value.trim(),
-  };
-  if (!payload.name || !payload.email || !payload.domain_id || !payload.drive_sheet_id)
-    return showToast("Name, email, domain and drive are required", "error");
-  try {
-    if (id) await sb.from("candidates").update(payload).eq("id", id);
-    else await sb.from("candidates").insert({ ...payload, created_by: currentUser.id });
-    closeModal(); await renderCandidates(); showToast("Candidate saved!");
-  } catch(e) { showToast(e.message, "error"); }
-}
-
-async function updateCandidateStatus(id, status) {
-  await sb.from("candidates").update({ status }).eq("id", id);
-  showToast(`Status → ${status}`);
-}
-
-async function sendConfirmEmail(id) {
-  try {
-    await sb.functions.invoke("send-email", { body: { type: "candidate_confirmation", payload: { candidateId: id } } });
-    showToast("Confirmation email sent!");
-  } catch(e) { showToast("Email failed: " + e.message, "error"); }
-}
-
-async function deleteCandidate(id) {
-  if (!confirm("Delete this candidate?")) return;
-  await sb.from("candidates").delete().eq("id", id);
-  await renderCandidates(); showToast("Candidate deleted");
-}
-
-// ============ REPORTS ============
-async function renderReports() {
-  let q = sb.from("candidates").select("status, interview_level, domain_id, current_company, recruiter_name, created_at");
-  if (currentDomainId) q = q.eq("domain_id", currentDomainId);
-  const { data: candidates = [] } = await q;
-
-  const sc = candidates.reduce((a,c)=>{ a[c.status]=(a[c.status]||0)+1; return a; }, {});
-  const lc = candidates.reduce((a,c)=>{ if(c.interview_level) a[c.interview_level]=(a[c.interview_level]||0)+1; return a; }, {});
-
-  document.getElementById("page-content").innerHTML = `
-    <div class="space-y-6">
-      <div class="flex justify-end gap-2">
-        <button onclick="exportCSV()" class="text-sm px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 font-medium">⬇ Export CSV</button>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-white rounded-xl border border-slate-200 p-5">
-          <h3 class="font-semibold mb-4">By Status</h3>
-          <div class="space-y-2">
-            ${Object.entries(sc).map(([k,v])=>`
-              <div class="flex items-center gap-3">
-                <span class="w-36 text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[k]||'bg-gray-100 text-gray-700'} truncate">${k}</span>
-                <div class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
-                  <div class="bg-blue-500 h-full rounded-full" style="width:${candidates.length ? Math.round(v/candidates.length*100) : 0}%"></div>
-                </div>
-                <span class="text-sm font-semibold w-6 text-right">${v}</span>
-              </div>`).join("") || '<p class="text-sm text-slate-400 text-center py-8">No data</p>'}
-          </div>
-        </div>
-        <div class="bg-white rounded-xl border border-slate-200 p-5">
-          <h3 class="font-semibold mb-4">By Interview Level</h3>
-          <div class="space-y-2">
-            ${Object.entries(lc).map(([k,v])=>`
-              <div class="flex items-center gap-3">
-                <span class="w-24 text-sm text-slate-600">${k}</span>
-                <div class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
-                  <div class="bg-indigo-500 h-full rounded-full" style="width:${candidates.length ? Math.round(v/candidates.length*100) : 0}%"></div>
-                </div>
-                <span class="text-sm font-semibold w-6 text-right">${v}</span>
-              </div>`).join("") || '<p class="text-sm text-slate-400 text-center py-8">No data</p>'}
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-white rounded-xl border border-slate-200 p-5">
-        <h3 class="font-semibold mb-1">Key Metrics</h3>
-        <p class="text-xs text-slate-400 mb-4">Based on ${candidates.length} total candidates</p>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          ${[
-            ["Selection Rate", candidates.length ? Math.round(((sc["Selected"]||0)+(sc["Offer Released"]||0))/candidates.length*100)+"%" : "—", "text-emerald-600"],
-            ["Offer Release Rate", candidates.length ? Math.round((sc["Offer Released"]||0)/candidates.length*100)+"%" : "—", "text-amber-600"],
-            ["No Show Rate", candidates.length ? Math.round((sc["No Show"]||0)/candidates.length*100)+"%" : "—", "text-red-500"],
-            ["Confirmation Rate", candidates.length ? Math.round((sc["Confirmed"]||0)/candidates.length*100)+"%" : "—", "text-blue-600"],
-          ].map(([l,v,c])=>`
-            <div class="bg-slate-50 rounded-lg p-4 text-center">
-              <p class="text-2xl font-bold ${c}">${v}</p>
-              <p class="text-xs text-slate-500 mt-1">${l}</p>
-            </div>`).join("")}
-        </div>
-      </div>
-    </div>`;
-}
-
-async function exportCSV() {
-  let q = sb.from("candidates").select("name, email, contact, experience_years, current_company, notice_period, recruiter_name, interview_level, status, interview_date, created_at");
-  if (currentDomainId) q = q.eq("domain_id", currentDomainId);
-  const { data } = await q;
-  if (!data?.length) return showToast("No data to export", "error");
-  const headers = Object.keys(data[0]);
-  const csv = [headers.join(","), ...data.map(r => headers.map(h => `"${(r[h]||"").toString().replace(/"/g,'""')}"`).join(","))].join("\n");
-  const a = document.createElement("a");
-  a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
-  a.download = `candidates_${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
-  showToast("CSV exported!");
-}
-
-// ============ MODAL HELPERS ============
-function openModal(title, body, footer) {
-  document.getElementById("modal-title").textContent = title;
-  document.getElementById("modal-body").innerHTML = body;
-  document.getElementById("modal-footer").innerHTML = footer || "";
-  document.getElementById("modal").classList.remove("hidden");
-}
-function closeModal() { document.getElementById("modal").classList.add("hidden"); }
-document.getElementById("modal").addEventListener("click", e => { if (e.target === document.getElementById("modal")) closeModal(); });
-
-// ============ TOAST ============
-function showToast(msg, type = "success") {
-  const t = document.getElementById("toast");
-  const icon = type === "error" ? "✗" : "✓";
-  t.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
-  t.className = `fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-xl text-sm fade-in flex items-center gap-2 max-w-xs ${type === "error" ? "bg-red-600" : "bg-slate-900"} text-white`;
-  t.classList.remove("hidden");
-  setTimeout(() => t.classList.add("hidden"), 3000);
-}
-
-// ============ NOTIFICATIONS ============
-function toggleNotifications() {
-  document.getElementById("notif-panel").classList.toggle("hidden");
-}
-function markAllRead() { document.getElementById("notif-panel").classList.add("hidden"); }
-
-// Close notif panel on outside click
-document.addEventListener("click", e => {
-  const panel = document.getElementById("notif-panel");
-  if (!panel.classList.contains("hidden") && !panel.parentElement.contains(e.target)) {
-    panel.classList.add("hidden");
+// =============================================
+// AUTH STATE LISTENER
+// =============================================
+sb.auth.onAuthStateChange(async(event,session)=>{
+  hide("page-loading"); _authReady=true;
+  if(session?.user){
+    currentUser=session.user;
+    try{const{data}=await sb.from("profiles").select("*").eq("id",session.user.id).maybeSingle();currentProfile=data;}catch(_){currentProfile=null;}
+    await loadDomains();
+    hide("page-login");
+    document.getElementById("page-app").style.display="flex";
+    updateSidebarUser();
+    navigate("dashboard");
+  } else {
+    currentUser=null;currentProfile=null;
+    document.getElementById("page-app").style.display="none";
+    document.getElementById("page-login").style.display="flex";
   }
 });
+setTimeout(()=>{if(!_authReady){hide("page-loading");document.getElementById("page-login").style.display="flex";_authReady=true;}},5000);
+
+function hide(id){const e=document.getElementById(id);if(e)e.style.display="none";}
+function updateSidebarUser(){
+  const name=currentProfile?.full_name||currentUser?.email?.split("@")[0]||"User";
+  const role=currentProfile?.role||"user";
+  document.getElementById("user-name").textContent=name;
+  document.getElementById("user-role").textContent=role;
+  document.getElementById("user-avatar").textContent=name[0].toUpperCase();
+  document.getElementById("nav-domains").style.display=role==="admin"?"flex":"none";
+}
+async function handleLogout(){clearOTPTimer();await sb.auth.signOut();resetOTPStep();switchLoginTab("admin");}
+
+// =============================================
+// NAVIGATION
+// =============================================
+async function navigate(page){
+  document.querySelectorAll(".sidebar-link").forEach(l=>l.classList.remove("active"));
+  const lnk=document.querySelector(`.sidebar-link[data-page="${page}"]`);if(lnk)lnk.classList.add("active");
+  const T={dashboard:["Dashboard","Real-time hiring overview"],domains:["Domain Management","Manage hiring domains"],panels:["Panel Members","Manage interviewers"],drives:["Drive Sheets","Manage interview drives"],candidates:["Candidates","Full candidate pipeline"],reports:["Reports","Metrics and CSV export"]};
+  document.getElementById("page-title").textContent=T[page]?.[0]||page;
+  document.getElementById("page-subtitle").textContent=T[page]?.[1]||"";
+  document.getElementById("page-content").innerHTML=`<div style="text-align:center;padding:80px 0;color:#94a3b8;font-size:13px">Loading…</div>`;
+  const fn={dashboard:renderDashboard,domains:renderDomains,panels:renderPanels,drives:renderDrives,candidates:renderCandidates,reports:renderReports};
+  if(fn[page])await fn[page]();
+}
+async function loadDomains(){
+  try{const{data}=await sb.from("domains").select("*").order("name");domains=data||[];}catch(_){domains=[];}
+  const sel=document.getElementById("global-domain-filter");
+  if(sel)sel.innerHTML=`<option value="">All Domains</option>`+domains.map(d=>`<option value="${d.id}" ${d.id===currentDomainId?"selected":""}>${d.name}</option>`).join("");
+}
+function onDomainChange(){currentDomainId=document.getElementById("global-domain-filter").value;const a=document.querySelector(".sidebar-link.active");if(a)navigate(a.dataset.page);}
+
+// =============================================
+// DASHBOARD
+// =============================================
+async function renderDashboard(){
+  try{
+    let cq=sb.from("candidates").select("status,interview_level,domain_id");if(currentDomainId)cq=cq.eq("domain_id",currentDomainId);
+    let pq=sb.from("panel_members").select("availability,name,designation,domain_id");if(currentDomainId)pq=pq.eq("domain_id",currentDomainId);
+    const[{data:C=[]},{data:P=[]}]=await Promise.all([cq,pq]);
+    const sc=C.reduce((a,c)=>{a[c.status]=(a[c.status]||0)+1;return a;},{});
+    const total=C.length,avail=P.filter(p=>p.availability==="Available").length;
+    const statCards=[["Total",total,"#1d4ed8"],["Confirmed",sc.Confirmed||0,"#16a34a"],["Selected",sc.Selected||0,"#0f766e"],["Offer Released",sc["Offer Released"]||0,"#d97706"],["No Show",sc["No Show"]||0,"#dc2626"],["Available Panels",`${avail}/${P.length}`,"#7c3aed"]]
+      .map(([l,v,c])=>`<div class="stat-card"><div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">${l}</div><div style="font-size:30px;font-weight:700;color:${c}">${v}</div></div>`).join("");
+    const pipe=Object.entries(sc).map(([k,v])=>{const[bg,fg]=(SC[k]||"#f1f5f9|#64748b").split("|");const p=total?Math.round(v/total*100):0;return`<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #f1f5f9"><span class="badge" style="background:${bg};color:${fg};width:150px;justify-content:center">${k}</span><div style="flex:1;background:#f1f5f9;border-radius:999px;height:6px"><div style="background:${fg};height:100%;width:${p}%;border-radius:999px"></div></div><span style="font-size:13px;font-weight:600;width:24px;text-align:right">${v}</span></div>`;}).join("")||`<p style="color:#94a3b8;text-align:center;padding:32px 0;font-size:13px">No candidates yet.</p>`;
+    const panList=P.slice(0,8).map(p=>{const[bg,fg]=(AC[p.availability]||"#f1f5f9|#64748b").split("|");return`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9"><div><div style="font-size:13px;font-weight:500">${p.name}</div><div style="font-size:11px;color:#94a3b8">${p.designation||""}</div></div><span class="badge" style="background:${bg};color:${fg}">${p.availability}</span></div>`;}).join("")||`<p style="color:#94a3b8;text-align:center;padding:32px 0;font-size:13px">No panel members yet.</p>`;
+    document.getElementById("page-content").innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;margin-bottom:24px">${statCards}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:20px"><div class="card" style="padding:20px"><h3 style="font-size:14px;font-weight:700;margin:0 0 16px">Candidate Pipeline</h3>${pipe}</div><div class="card" style="padding:20px"><h3 style="font-size:14px;font-weight:700;margin:0 0 16px">Panel Availability</h3>${panList}</div></div>`;
+  }catch(e){document.getElementById("page-content").innerHTML=`<div style="color:#dc2626;padding:20px;background:#fef2f2;border-radius:8px;font-size:13px">Error: ${e.message}</div>`;}
+}
+
+// =============================================
+// DOMAINS
+// =============================================
+async function renderDomains(){
+  const{data:rows=[]}=await sb.from("domains").select("*").order("name");
+  const isAdmin=currentProfile?.role==="admin";
+  document.getElementById("page-content").innerHTML=`<div class="card"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between"><span style="font-size:13px;color:#64748b">${rows.length} domain(s)</span>${isAdmin?`<button class="btn-primary" onclick="openDomainModal()">+ Add Domain</button>`:""}</div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Description</th><th>Status</th>${isAdmin?"<th>Actions</th>":""}</tr></thead><tbody>${rows.length?rows.map(d=>`<tr><td style="font-weight:600">${d.name}</td><td style="color:#64748b">${d.description||"—"}</td><td>${badge(d.is_active?"Active":"Inactive",{"Active":"#dcfce7|#15803d","Inactive":"#f1f5f9|#64748b"})}</td>${isAdmin?`<td><button onclick="openDomainModal('${d.id}')" style="color:#1d4ed8;background:none;border:none;cursor:pointer;font-size:13px;margin-right:8px">Edit</button><button onclick="deleteDomain('${d.id}')" style="color:#dc2626;background:none;border:none;cursor:pointer;font-size:13px">Delete</button></td>`:""}</tr>`).join(""):`<tr><td colspan="4" style="text-align:center;padding:40px;color:#94a3b8">No domains yet.</td></tr>`}</tbody></table></div></div>`;
+}
+async function openDomainModal(id){let d=null;if(id){const{data}=await sb.from("domains").select("*").eq("id",id).single();d=data;}openModal(id?"Edit Domain":"Add Domain",`<div style="display:grid;gap:14px"><div><label class="form-label">Domain Name *</label><input id="f-name" class="form-input" value="${d?.name||""}" /></div><div><label class="form-label">Description</label><textarea id="f-desc" class="form-input" rows="2">${d?.description||""}</textarea></div></div>`,`<button class="btn-ghost" onclick="closeModal()">Cancel</button><button class="btn-primary" onclick="saveDomain('${id||""}')">Save</button>`);}
+async function saveDomain(id){const name=document.getElementById("f-name").value.trim(),desc=document.getElementById("f-desc").value.trim();if(!name)return showToast("Domain name required","error");try{if(id)await sb.from("domains").update({name,description:desc}).eq("id",id);else await sb.from("domains").insert({name,description:desc});closeModal();await loadDomains();await renderDomains();showToast("Domain saved");}catch(e){showToast(e.message,"error");}}
+async function deleteDomain(id){if(!confirm("Delete this domain?"))return;await sb.from("domains").delete().eq("id",id);await loadDomains();await renderDomains();showToast("Domain deleted");}
+
+// =============================================
+// PANELS
+// =============================================
+async function renderPanels(){
+  let q=sb.from("panel_members").select("*,domains(name)").order("name");if(currentDomainId)q=q.eq("domain_id",currentDomainId);
+  const{data:rows=[]}=await q;
+  document.getElementById("page-content").innerHTML=`<div class="card"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between"><span style="font-size:13px;color:#64748b">${rows.length} member(s)</span><button class="btn-primary" onclick="openPanelModal()">+ Add Panel Member</button></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Domain</th><th>Level</th><th>Email</th><th>Location</th><th>Availability</th><th>Actions</th></tr></thead><tbody>${rows.length?rows.map(p=>`<tr><td><div style="font-weight:600">${p.name}</div><div style="font-size:11px;color:#94a3b8">${p.designation||""}</div></td><td style="color:#64748b">${p.domains?.name||"—"}</td><td><span class="badge" style="background:#dbeafe;color:#1e40af">${p.interview_level||"—"}</span></td><td style="color:#64748b;font-size:12px">${p.email}</td><td style="color:#64748b">${p.location||"—"}</td><td>${badge(p.availability||"Available",AC)}</td><td><button onclick="openPanelModal('${p.id}')" style="color:#1d4ed8;background:none;border:none;cursor:pointer;font-size:13px;margin-right:8px">Edit</button><button onclick="deletePanel('${p.id}')" style="color:#dc2626;background:none;border:none;cursor:pointer;font-size:13px">Remove</button></td></tr>`).join(""):`<tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8">No panel members yet.</td></tr>`}</tbody></table></div></div>`;
+}
+async function openPanelModal(id){let p=null;if(id){const{data}=await sb.from("panel_members").select("*").eq("id",id).single();p=data;}const dOpts=domains.map(d=>`<option value="${d.id}" ${p?.domain_id===d.id?"selected":""}>${d.name}</option>`).join("");openModal(id?"Edit Panel Member":"Add Panel Member",`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div style="grid-column:span 2"><label class="form-label">Full Name *</label><input id="f-name" class="form-input" value="${p?.name||""}" /></div><div><label class="form-label">Email *</label><input id="f-email" type="email" class="form-input" value="${p?.email||""}" /></div><div><label class="form-label">Domain *</label><select id="f-domain" class="form-input"><option value="">Select</option>${dOpts}</select></div><div><label class="form-label">Designation</label><input id="f-desig" class="form-input" value="${p?.designation||""}" /></div><div><label class="form-label">Interview Level</label><select id="f-level" class="form-input">${["L1","L2","Managerial","HR"].map(l=>`<option ${p?.interview_level===l?"selected":""}>${l}</option>`).join("")}</select></div><div><label class="form-label">Hiring Role</label><input id="f-role" class="form-input" value="${p?.hiring_role||""}" /></div><div><label class="form-label">Location</label><input id="f-loc" class="form-input" value="${p?.location||""}" /></div><div style="grid-column:span 2"><label class="form-label">Availability</label><select id="f-avail" class="form-input">${["Available","Unavailable","On Leave"].map(a=>`<option ${p?.availability===a?"selected":""}>${a}</option>`).join("")}</select></div></div>`,`<button class="btn-ghost" onclick="closeModal()">Cancel</button><button class="btn-primary" onclick="savePanel('${id||""}')">Save</button>`);}
+async function savePanel(id){const payload={name:document.getElementById("f-name").value.trim(),email:document.getElementById("f-email").value.trim(),domain_id:document.getElementById("f-domain").value,designation:document.getElementById("f-desig").value.trim(),interview_level:document.getElementById("f-level").value,hiring_role:document.getElementById("f-role").value.trim(),location:document.getElementById("f-loc").value.trim(),availability:document.getElementById("f-avail").value};if(!payload.name||!payload.email||!payload.domain_id)return showToast("Name, email and domain required","error");try{if(id)await sb.from("panel_members").update(payload).eq("id",id);else await sb.from("panel_members").insert({...payload,created_by:currentUser.id});closeModal();await renderPanels();showToast("Panel member saved");}catch(e){showToast(e.message,"error");}}
+async function deletePanel(id){if(!confirm("Remove this panel member?"))return;await sb.from("panel_members").update({is_active:false}).eq("id",id);await renderPanels();showToast("Removed");}
+
+// =============================================
+// DRIVES
+// =============================================
+async function renderDrives(){
+  let q=sb.from("drive_sheets").select("*,domains(name)").order("created_at",{ascending:false});if(currentDomainId)q=q.eq("domain_id",currentDomainId);
+  const{data:rows=[]}=await q;
+  const cards=rows.length?rows.map(d=>`<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;cursor:pointer;transition:border .15s,box-shadow .15s" onclick="sessionStorage.setItem('driveId','${d.id}');navigate('candidates')" onmouseover="this.style.borderColor='#93c5fd';this.style.boxShadow='0 2px 12px rgba(59,130,246,.12)'" onmouseout="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"><div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px"><div style="font-weight:700;font-size:14px;color:#0f172a">${d.drive_name}</div>${badge(d.is_active?"Active":"Closed",{"Active":"#dcfce7|#15803d","Closed":"#f1f5f9|#64748b"})}</div><div style="font-size:12px;color:#94a3b8;margin-bottom:8px">${d.domains?.name||"No domain"} • ${d.drive_date?new Date(d.drive_date).toLocaleDateString("en-IN"):"No date"}</div><div style="font-size:12px;color:#64748b;margin-bottom:14px">${d.description||""}</div><div style="display:flex;gap:12px;border-top:1px solid #f1f5f9;padding-top:12px"><button onclick="event.stopPropagation();openDriveModal('${d.id}')" style="color:#1d4ed8;background:none;border:none;cursor:pointer;font-size:12px;font-weight:600">Edit</button><button onclick="event.stopPropagation();deleteDrive('${d.id}')" style="color:#dc2626;background:none;border:none;cursor:pointer;font-size:12px;font-weight:600">Delete</button></div></div>`).join(""):`<div style="color:#94a3b8;font-size:13px;text-align:center;padding:40px;grid-column:span 3">No drives yet.</div>`;
+  document.getElementById("page-content").innerHTML=`<div class="card" style="overflow:visible"><div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between"><span style="font-size:13px;color:#64748b">${rows.length} drive(s)</span><button class="btn-primary" onclick="openDriveModal()">+ New Drive</button></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;padding:20px">${cards}</div></div>`;
+}
+async function openDriveModal(id){let d=null;if(id){const{data}=await sb.from("drive_sheets").select("*").eq("id",id).single();d=data;}const dOpts=domains.map(dm=>`<option value="${dm.id}" ${d?.domain_id===dm.id?"selected":""}>${dm.name}</option>`).join("");openModal(id?"Edit Drive":"New Drive Sheet",`<div style="display:grid;gap:14px"><div><label class="form-label">Drive Name *</label><input id="f-name" class="form-input" value="${d?.drive_name||""}" /></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label class="form-label">Domain *</label><select id="f-domain" class="form-input"><option value="">Select</option>${dOpts}</select></div><div><label class="form-label">Drive Date</label><input id="f-date" type="date" class="form-input" value="${d?.drive_date||""}" /></div></div><div><label class="form-label">Description</label><textarea id="f-desc" class="form-input" rows="2">${d?.description||""}</textarea></div></div>`,`<button class="btn-ghost" onclick="closeModal()">Cancel</button><button class="btn-primary" onclick="saveDrive('${id||""}')">Save</button>`);}
+async function saveDrive(id){const payload={drive_name:document.getElementById("f-name").value.trim(),domain_id:document.getElementById("f-domain").value,drive_date:document.getElementById("f-date").value||null,description:document.getElementById("f-desc").value.trim()};if(!payload.drive_name||!payload.domain_id)return showToast("Drive name and domain required","error");try{if(id)await sb.from("drive_sheets").update(payload).eq("id",id);else await sb.from("drive_sheets").insert({...payload,created_by:currentUser.id});closeModal();await renderDrives();showToast("Drive saved");}catch(e){showToast(e.message,"error");}}
+async function deleteDrive(id){if(!confirm("Delete this drive?"))return;await sb.from("drive_sheets").delete().eq("id",id);await renderDrives();showToast("Drive deleted");}
+
+// =============================================
+// CANDIDATES
+// =============================================
+async function renderCandidates(){
+  const driveId=sessionStorage.getItem("driveId")||"";
+  const{data:drvs=[]}=await sb.from("drive_sheets").select("id,drive_name,domain_id").order("drive_name");
+  const fd=currentDomainId?drvs.filter(d=>d.domain_id===currentDomainId):drvs;
+  let q=sb.from("candidates").select("id,name,email,experience_years,current_company,interview_level,status,drive_sheet_id,domain_id,panel_members(name),drive_sheets(drive_name)").order("created_at",{ascending:false});
+  if(driveId)q=q.eq("drive_sheet_id",driveId);else if(currentDomainId)q=q.eq("domain_id",currentDomainId);
+  const{data:rows=[]}=await q;
+  const drOpts=fd.map(d=>`<option value="${d.id}" ${d.id===driveId?"selected":""}>${d.drive_name}</option>`).join("");
+  const trows=rows.length?rows.map(c=>{const[bg,fg]=(SC[c.status]||"#f1f5f9|#64748b").split("|");return`<tr><td><div style="font-weight:600;font-size:13px">${c.name}</div><div style="font-size:11px;color:#94a3b8">${c.email}</div></td><td>${c.experience_years?c.experience_years+"y":"—"}</td><td>${c.current_company||"—"}</td><td>${c.interview_level?`<span class="badge" style="background:#dbeafe;color:#1e40af">${c.interview_level}</span>`:"—"}</td><td style="font-size:12px;color:#64748b">${c.panel_members?.name||"—"}</td><td><select onchange="updateCandidateStatus('${c.id}',this.value)" style="background:${bg};color:${fg};border:none;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer;outline:none">${STATUSES.map(s=>`<option ${s===c.status?"selected":""}>${s}</option>`).join("")}</select></td><td style="font-size:12px;color:#64748b">${c.drive_sheets?.drive_name||"—"}</td><td style="white-space:nowrap"><button onclick="openCandidateModal('${c.id}')" style="color:#1d4ed8;background:none;border:none;cursor:pointer;font-size:12px;font-weight:600;margin-right:8px">Edit</button><button onclick="sendConfirmEmail('${c.id}')" style="color:#16a34a;background:none;border:none;cursor:pointer;font-size:12px;font-weight:600;margin-right:8px">Email</button><button onclick="deleteCandidate('${c.id}')" style="color:#dc2626;background:none;border:none;cursor:pointer;font-size:12px;font-weight:600">Del</button></td></tr>`;}).join(""):`<tr><td colspan="8" style="text-align:center;padding:40px;color:#94a3b8">No candidates yet.</td></tr>`;
+  document.getElementById("page-content").innerHTML=`<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px"><select id="drive-filter" onchange="sessionStorage.setItem('driveId',this.value);renderCandidates()" style="font-size:13px;border:1px solid #e2e8f0;border-radius:8px;padding:7px 10px;background:#fff;outline:none"><option value="">All Drives</option>${drOpts}</select><div style="margin-left:auto"><button class="btn-primary" onclick="openCandidateModal()">+ Add Candidate</button></div></div><div class="card"><div class="table-wrap"><table style="min-width:900px"><thead><tr><th>Candidate</th><th>Exp</th><th>Company</th><th>Level</th><th>Panel</th><th>Status</th><th>Drive</th><th>Actions</th></tr></thead><tbody>${trows}</tbody></table></div></div>`;
+}
+async function openCandidateModal(id){
+  let c=null;if(id){const{data}=await sb.from("candidates").select("*").eq("id",id).single();c=data;}
+  const{data:drvs=[]}=await sb.from("drive_sheets").select("id,drive_name").order("drive_name");
+  const{data:panels=[]}=await sb.from("panel_members").select("id,name,interview_level").eq("is_active",true).order("name");
+  const dOpts=domains.map(d=>`<option value="${d.id}" ${c?.domain_id===d.id?"selected":""}>${d.name}</option>`).join("");
+  const drOpts=drvs.map(d=>`<option value="${d.id}" ${c?.drive_sheet_id===d.id?"selected":""}>${d.drive_name}</option>`).join("");
+  const pOpts=panels.map(p=>`<option value="${p.id}" ${c?.panel_member_id===p.id?"selected":""}>${p.name} (${p.interview_level||""})</option>`).join("");
+  openModal(id?"Edit Candidate":"Add Candidate",`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div style="grid-column:span 2"><label class="form-label">Full Name *</label><input id="f-name" class="form-input" value="${c?.name||""}" /></div><div><label class="form-label">Email *</label><input id="f-email" type="email" class="form-input" value="${c?.email||""}" /></div><div><label class="form-label">Contact</label><input id="f-contact" class="form-input" value="${c?.contact||""}" /></div><div><label class="form-label">Experience (yrs)</label><input id="f-exp" type="number" step="0.5" class="form-input" value="${c?.experience_years||""}" /></div><div><label class="form-label">Current Company</label><input id="f-company" class="form-input" value="${c?.current_company||""}" /></div><div><label class="form-label">Notice Period</label><input id="f-notice" class="form-input" placeholder="e.g. 30 days" value="${c?.notice_period||""}" /></div><div><label class="form-label">Recruiter Name</label><input id="f-recruiter" class="form-input" value="${c?.recruiter_name||""}" /></div><div><label class="form-label">Domain *</label><select id="f-domain" class="form-input"><option value="">Select</option>${dOpts}</select></div><div><label class="form-label">Drive Sheet *</label><select id="f-drive" class="form-input"><option value="">Select</option>${drOpts}</select></div><div><label class="form-label">Interview Level</label><select id="f-level" class="form-input">${["L1","L2","Managerial","HR"].map(l=>`<option ${c?.interview_level===l?"selected":""}>${l}</option>`).join("")}</select></div><div><label class="form-label">Panel Member</label><select id="f-panel" class="form-input"><option value="">Not assigned</option>${pOpts}</select></div><div><label class="form-label">Status</label><select id="f-status" class="form-input">${STATUSES.map(s=>`<option ${c?.status===s?"selected":""}>${s}</option>`).join("")}</select></div><div><label class="form-label">Interview Date & Time</label><input id="f-idate" type="datetime-local" class="form-input" value="${c?.interview_date?c.interview_date.slice(0,16):""}" /></div><div style="grid-column:span 2"><label class="form-label">Interview Link</label><input id="f-link" class="form-input" placeholder="https://meet.google.com/..." value="${c?.interview_link||""}" /></div></div>`,`<button class="btn-ghost" onclick="closeModal()">Cancel</button><button class="btn-primary" onclick="saveCandidate('${id||""}')">Save</button>`);
+}
+async function saveCandidate(id){const payload={name:document.getElementById("f-name").value.trim(),email:document.getElementById("f-email").value.trim(),contact:document.getElementById("f-contact").value.trim(),experience_years:parseFloat(document.getElementById("f-exp").value)||null,current_company:document.getElementById("f-company").value.trim(),notice_period:document.getElementById("f-notice").value.trim(),recruiter_name:document.getElementById("f-recruiter").value.trim(),domain_id:document.getElementById("f-domain").value,drive_sheet_id:document.getElementById("f-drive").value,interview_level:document.getElementById("f-level").value,panel_member_id:document.getElementById("f-panel").value||null,status:document.getElementById("f-status").value,interview_date:document.getElementById("f-idate").value||null,interview_link:document.getElementById("f-link").value.trim()};if(!payload.name||!payload.email||!payload.domain_id||!payload.drive_sheet_id)return showToast("Name, email, domain and drive required","error");try{if(id)await sb.from("candidates").update(payload).eq("id",id);else await sb.from("candidates").insert({...payload,created_by:currentUser.id});closeModal();await renderCandidates();showToast("Candidate saved");}catch(e){showToast(e.message,"error");}}
+async function updateCandidateStatus(id,status){try{await sb.from("candidates").update({status}).eq("id",id);showToast("Status → "+status);}catch(e){showToast(e.message,"error");}}
+async function sendConfirmEmail(id){try{await sb.functions.invoke("send-email",{body:{type:"candidate_confirmation",payload:{candidateId:id}}});showToast("Confirmation email sent");}catch(e){showToast("Email error: "+e.message,"error");}}
+async function deleteCandidate(id){if(!confirm("Delete this candidate?"))return;await sb.from("candidates").delete().eq("id",id);await renderCandidates();showToast("Candidate deleted");}
+
+// =============================================
+// REPORTS
+// =============================================
+async function renderReports(){
+  let q=sb.from("candidates").select("status,interview_level,domain_id");if(currentDomainId)q=q.eq("domain_id",currentDomainId);
+  const{data:C=[]}=await q;
+  const sc=C.reduce((a,c)=>{a[c.status]=(a[c.status]||0)+1;return a;},{});
+  const lc=C.reduce((a,c)=>{if(c.interview_level)a[c.interview_level]=(a[c.interview_level]||0)+1;return a;},{});
+  const total=C.length,pct=n=>total?Math.round(n/total*100):0;
+  const metrics=[["Selection Rate",pct((sc.Selected||0)+(sc["Offer Released"]||0))+"%","#059669"],["Offer Rate",pct(sc["Offer Released"]||0)+"%","#d97706"],["No Show Rate",pct(sc["No Show"]||0)+"%","#dc2626"],["Confirm Rate",pct(sc.Confirmed||0)+"%","#1d4ed8"]].map(([l,v,c])=>`<div class="stat-card" style="text-align:center"><div style="font-size:28px;font-weight:700;color:${c}">${v}</div><div style="font-size:12px;color:#64748b;margin-top:6px">${l}</div></div>`).join("");
+  const byS=Object.entries(sc).map(([k,v])=>{const[bg,fg]=(SC[k]||"#f1f5f9|#64748b").split("|");return`<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #f1f5f9"><span class="badge" style="background:${bg};color:${fg};width:155px;justify-content:center">${k}</span><div style="flex:1;background:#f1f5f9;border-radius:999px;height:6px"><div style="background:${fg};height:100%;width:${pct(v)}%;border-radius:999px"></div></div><span style="font-size:13px;font-weight:600;width:24px;text-align:right">${v}</span></div>`;}).join("")||`<p style="color:#94a3b8;text-align:center;padding:32px 0;font-size:13px">No data yet.</p>`;
+  const byL=Object.entries(lc).map(([k,v])=>`<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #f1f5f9"><span style="width:100px;font-size:13px;font-weight:600;color:#475569">${k}</span><div style="flex:1;background:#f1f5f9;border-radius:999px;height:6px"><div style="background:#1d4ed8;height:100%;width:${pct(v)}%;border-radius:999px"></div></div><span style="font-size:13px;font-weight:600;width:24px;text-align:right">${v}</span></div>`).join("")||`<p style="color:#94a3b8;text-align:center;padding:32px 0;font-size:13px">No data yet.</p>`;
+  document.getElementById("page-content").innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:16px"><button class="btn-ghost" onclick="exportCSV()">⬇ Export CSV</button></div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">${metrics}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:20px"><div class="card" style="padding:20px"><h3 style="font-size:14px;font-weight:700;margin:0 0 16px">By Status</h3>${byS}</div><div class="card" style="padding:20px"><h3 style="font-size:14px;font-weight:700;margin:0 0 16px">By Interview Level</h3>${byL}</div></div>`;
+}
+async function exportCSV(){
+  let q=sb.from("candidates").select("name,email,contact,experience_years,current_company,notice_period,recruiter_name,interview_level,status,interview_date,created_at");if(currentDomainId)q=q.eq("domain_id",currentDomainId);
+  const{data}=await q;if(!data?.length)return showToast("No data","error");
+  const h=Object.keys(data[0]),csv=[h.join(","),...data.map(r=>h.map(k=>`"${(r[k]||"").toString().replace(/"/g,'""')}"`).join(","))].join("\n");
+  const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download=`candidates_${new Date().toISOString().slice(0,10)}.csv`;a.click();showToast("CSV downloaded");
+}
+
+// =============================================
+// MODAL & TOAST
+// =============================================
+function openModal(title,body,footer){document.getElementById("modal-title").textContent=title;document.getElementById("modal-body").innerHTML=body;document.getElementById("modal-footer").innerHTML=footer||"";document.getElementById("modal").classList.add("open");setTimeout(()=>{const f=document.querySelector("#modal-body input,#modal-body select");if(f)f.focus();},60);}
+function closeModal(){document.getElementById("modal").classList.remove("open");}
+function showToast(msg,type="success"){const t=document.getElementById("toast");t.innerHTML=`<span>${type==="error"?"✗":"✓"}</span><span>${msg}</span>`;t.style.background=type==="error"?"#dc2626":"#0f172a";t.style.display="flex";clearTimeout(t._t);t._t=setTimeout(()=>t.style.display="none",3000);}
 </script>
 </body>
 </html>
