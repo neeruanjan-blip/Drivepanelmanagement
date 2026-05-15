@@ -3,38 +3,58 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Drive & Panel Management</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <title>Interview Response</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: Arial, sans-serif; background: #f8fafc; color: #1e293b; }
-    .fade-in { animation: fadeIn 0.2s ease; }
-    @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
-    @keyframes spin { to { transform:rotate(360deg); } }
-    .sidebar-link { display:flex; align-items:center; gap:12px; width:100%; padding:10px 12px; border-radius:8px; color:#cbd5e1; font-size:14px; border:none; background:none; cursor:pointer; text-align:left; transition:background 0.15s,color 0.15s; }
-    .sidebar-link:hover { background:#334155; color:#fff; }
-    .sidebar-link.active { background:#1e40af; color:#fff; }
-    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1000; align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(2px); }
-    .modal-overlay.open { display:flex; }
-    input, select, textarea { font-family:inherit; }
-    .table-wrap { overflow-x:auto; }
-    table { width:100%; border-collapse:collapse; font-size:14px; }
-    th { text-align:left; padding:10px 16px; font-size:11px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color:#64748b; background:#f8fafc; border-bottom:1px solid #e2e8f0; white-space:nowrap; }
-    td { padding:10px 16px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
-    tr:last-child td { border-bottom:none; }
-    tr:hover td { background:#f8fafc; }
-    .badge { display:inline-flex; align-items:center; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:600; white-space:nowrap; }
-    .btn-primary { background:#1d4ed8; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.15s; }
-    .btn-primary:hover { background:#1e40af; }
-    .btn-ghost { background:none; border:1px solid #e2e8f0; padding:8px 16px; border-radius:8px; font-size:13px; cursor:pointer; color:#475569; transition:background 0.15s; }
-    .btn-ghost:hover { background:#f1f5f9; }
-    .form-input { width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:8px 12px; font-size:13px; outline:none; transition:border 0.15s; background:#fff; }
-    .form-input:focus { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,0.1); }
-    .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px; }
-    .card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden; }
-    .stat-card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:20px; }
+    body{font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:linear-gradient(135deg,#1e3a8a,#1e293b)}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    .card{background:#fff;border-radius:16px;padding:48px;max-width:480px;width:100%;text-align:center;animation:fadeIn .3s ease}
   </style>
 </head>
 <body>
-SEE FULL CODE IN STEP 4 — click "Copy Full index.html" button above to get the complete 825-line file
+  <div class="card">
+    <div id="loading">
+      <div style="width:40px;height:40px;border:3px solid #dbeafe;border-top-color:#1d4ed8;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px"></div>
+      <p style="color:#64748b;font-size:14px">Processing your response…</p>
+    </div>
+    <div id="result" style="display:none"></div>
+  </div>
+  <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+    const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co";
+    const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    async function processResponse() {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get("token"), action = params.get("action"), status = params.get("status"), type = params.get("type")||"candidate";
+      if (!token) return showResult("error","Invalid Link","This link is missing required information.");
+      try {
+        if (type==="candidate" && action) {
+          const{data:c,error}=await sb.from("candidates").select("id,name").eq("confirmation_token",token).single();
+          if(error||!c) return showResult("error","Link Expired","This link is invalid or already used.");
+          const newStatus = action==="confirm"?"Confirmed":"Declined";
+          await sb.from("candidates").update({status:newStatus,confirmed_at:new Date().toISOString()}).eq("id",c.id);
+          const col = action==="confirm"?"#16a34a":"#dc2626", icon = action==="confirm"?"✓":"✗";
+          showResult(action==="confirm"?"success":"decline",`${icon} Interview ${newStatus}`,`Thank you <strong>${c.name}</strong>. Your response has been recorded as <strong style="color:${col}">${newStatus}</strong>.`);
+        }
+        if (type==="panel" && status) {
+          const{data:p,error}=await sb.from("panel_members").select("id,name").eq("availability_token",token).single();
+          if(error||!p) return showResult("error","Link Expired","This availability link is invalid.");
+          await sb.from("panel_members").update({availability:status,availability_updated_at:new Date().toISOString()}).eq("id",p.id);
+          const col=status==="Available"?"#16a34a":status==="On Leave"?"#d97706":"#dc2626";
+          showResult("success","Availability Updated",`Thank you <strong>${p.name}</strong>. Marked as <strong style="color:${col}">${status}</strong>.`);
+        }
+      } catch(e) { showResult("error","Something went wrong",e.message); }
+    }
+    function showResult(type,title,msg) {
+      document.getElementById("loading").style.display="none";
+      const icons={success:'<div style="width:64px;height:64px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg></div>',decline:'<div style="width:64px;height:64px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>',error:'<div style="width:64px;height:64px;background:#fef9c3;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>'};
+      const r=document.getElementById("result");
+      r.innerHTML=`${icons[type]||icons.error}<h2 style="font-size:20px;font-weight:700;margin:0 0 12px;color:#0f172a">${title}</h2><p style="color:#475569;line-height:1.6;margin:0">${msg}</p><p style="font-size:12px;color:#94a3b8;margin-top:32px">You can close this window.</p>`;
+      r.style.display="block";
+    }
+    processResponse();
+  </script>
+</body>
+</html>
